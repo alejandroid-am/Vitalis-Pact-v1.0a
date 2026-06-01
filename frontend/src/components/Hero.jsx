@@ -1,9 +1,11 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Dumbbell, Zap, Heart, Plus, Package, Coins, FlaskConical, Sword, Backpack, AlertTriangle } from 'lucide-react';
+import { Dumbbell, Zap, Heart, Plus, Package, Coins, FlaskConical, Sword, Backpack, AlertTriangle, Shield, Gem } from 'lucide-react';
 import { STAT_LABELS } from '../data/missions';
-import { TIER_STYLES } from '../data/shop';
+import { TIER_STYLES, SLOT_LABEL } from '../data/shop';
 import AchievementsPanel from './AchievementsPanel';
+
+const SLOT_ICON = { weapon: Sword, armor: Shield, trinket: Gem };
 
 const STAT_INFO = [
   { key: 'strength', Icon: Dumbbell, color: 'text-orange-400', desc: 'Raw power. Required for heavy combat missions.' },
@@ -80,9 +82,16 @@ const StiffnessBanner = () => (
   </motion.div>
 );
 
-const Hero = ({ gameData, maxHP, isStiff, onUpgradeStat, onUsePotion, onOpenBag }) => {
-  const { name, characterClass, level, sp, stats, inventory, hp, gold, gear, streak } = gameData;
+const Hero = ({ gameData, maxHP, isStiff, effectiveStats, onUpgradeStat, onUsePotion, onOpenBag }) => {
+  const { name, characterClass, level, sp, stats, inventory, hp, gold, gear, streak, equippedGearIds } = gameData;
   const stiff = !!isStiff;
+  const eff = effectiveStats || stats;
+
+  const equipped = ['weapon', 'armor', 'trinket'].map(slot => {
+    const id = equippedGearIds?.[slot];
+    return { slot, item: id ? gear.find(g => g.id === id) : null };
+  });
+  const anyEquipped = equipped.some(e => e.item);
 
   return (
     <div className="bg-[#09090B] min-h-[calc(100vh-4rem)] flex flex-col">
@@ -161,7 +170,11 @@ const Hero = ({ gameData, maxHP, isStiff, onUpgradeStat, onUsePotion, onOpenBag 
         <div>
           <p className="font-pixel text-[9px] text-zinc-400 uppercase mb-3">Attributes</p>
           <div className="space-y-2">
-            {STAT_INFO.map(({ key, Icon, color, desc }, i) => (
+            {STAT_INFO.map(({ key, Icon, color, desc }, i) => {
+              const base = stats[key];
+              const effVal = eff[key];
+              const bonus = effVal - base;
+              return (
               <motion.div
                 key={key}
                 initial={{ opacity: 0, x: -12 }}
@@ -175,9 +188,16 @@ const Hero = ({ gameData, maxHP, isStiff, onUpgradeStat, onUsePotion, onOpenBag 
                   <p className="font-plex text-[10px] text-zinc-500 leading-tight mt-0.5">{desc}</p>
                 </div>
                 <div className="flex items-center gap-3">
-                  <span data-testid={`stat-${key}-value`} className="font-pixel text-xl text-zinc-100 w-6 text-center">
-                    {stats[key]}
-                  </span>
+                  <div className="text-right">
+                    <span data-testid={`stat-${key}-value`} className="font-pixel text-xl text-zinc-100">
+                      {effVal}
+                    </span>
+                    {bonus > 0 && (
+                      <p data-testid={`stat-${key}-bonus`} className="font-pixel text-[7px] text-emerald-300 leading-none">
+                        {base} +{bonus}
+                      </p>
+                    )}
+                  </div>
                   <button
                     data-testid={`upgrade-${key}-btn`}
                     onClick={() => onUpgradeStat(key)}
@@ -192,8 +212,49 @@ const Hero = ({ gameData, maxHP, isStiff, onUpgradeStat, onUsePotion, onOpenBag 
                   </button>
                 </div>
               </motion.div>
-            ))}
+              );
+            })}
           </div>
+        </div>
+
+        {/* Equipped Gear */}
+        <div>
+          <p className="font-pixel text-[9px] text-zinc-400 uppercase mb-3">Equipped</p>
+          <div className="grid grid-cols-3 gap-2">
+            {equipped.map(({ slot, item }) => {
+              const SlotIcon = SLOT_ICON[slot] || Sword;
+              if (!item) {
+                return (
+                  <div
+                    key={slot}
+                    data-testid={`equipped-${slot}-empty`}
+                    className="bg-[#18181B] border-2 border-dashed border-[#3F3F46] p-2 text-center"
+                  >
+                    <SlotIcon size={16} className="text-zinc-700 mx-auto mb-1" />
+                    <p className="font-pixel text-[7px] text-zinc-600">{SLOT_LABEL[slot]}</p>
+                    <p className="font-pixel text-[7px] text-zinc-700 mt-0.5">empty</p>
+                  </div>
+                );
+              }
+              const t = TIER_STYLES[item.tier] || TIER_STYLES.I;
+              return (
+                <div
+                  key={slot}
+                  data-testid={`equipped-${slot}-slot`}
+                  className={`bg-[#18181B] border-2 ${t.border} p-2 text-center`}
+                >
+                  <SlotIcon size={16} className={`${t.text} mx-auto mb-1`} />
+                  <p className="font-pixel text-[7px] text-zinc-500">{SLOT_LABEL[slot]}</p>
+                  <p className={`font-pixel text-[8px] ${t.text} truncate leading-tight mt-0.5`}>{item.name}</p>
+                </div>
+              );
+            })}
+          </div>
+          {!anyEquipped && (
+            <p className="font-plex text-[10px] text-zinc-600 mt-2 text-center">
+              Open your Bag and equip gear for stat bonuses.
+            </p>
+          )}
         </div>
 
         {/* Achievements */}

@@ -29,6 +29,7 @@ const INITIAL_STATE = {
   gold: 0,
   potions: 0,
   gear: [],
+  equippedGearIds: { weapon: null, armor: null, trinket: null },
   lastRegenAt: null,
   lastDailyHealDate: null,
   // V3.1 additions
@@ -45,6 +46,32 @@ const INITIAL_STATE = {
   lastWorkoutAt: null,
 };
 
+// Sum of bonuses from equipped gear items.
+export const sumGearBonus = (gear, equippedGearIds) => {
+  const total = { strength: 0, agility: 0, endurance: 0 };
+  if (!gear || !equippedGearIds) return total;
+  for (const slot of Object.keys(equippedGearIds)) {
+    const id = equippedGearIds[slot];
+    if (!id) continue;
+    const item = gear.find(g => g.id === id);
+    if (!item || !item.bonus) continue;
+    total.strength += item.bonus.strength || 0;
+    total.agility += item.bonus.agility || 0;
+    total.endurance += item.bonus.endurance || 0;
+  }
+  return total;
+};
+
+// Effective combat stats = base stats + equipped gear bonuses
+export const getEffectiveStats = (data) => {
+  const bonus = sumGearBonus(data.gear, data.equippedGearIds);
+  return {
+    strength: (data.stats?.strength || 1) + bonus.strength,
+    agility:  (data.stats?.agility || 1) + bonus.agility,
+    endurance:(data.stats?.endurance || 1) + bonus.endurance,
+  };
+};
+
 export function useGameData() {
   const [gameData, setGameData] = useState(() => {
     try {
@@ -57,6 +84,7 @@ export function useGameData() {
           stats: { ...INITIAL_STATE.stats, ...parsed.stats },
           inventory: parsed.inventory || [],
           gear: parsed.gear || [],
+          equippedGearIds: { ...INITIAL_STATE.equippedGearIds, ...(parsed.equippedGearIds || {}) },
           lifetime: { ...INITIAL_STATE.lifetime, ...(parsed.lifetime || {}) },
           streak: { ...INITIAL_STATE.streak, ...(parsed.streak || {}) },
           dailyBoost: { ...INITIAL_STATE.dailyBoost, ...(parsed.dailyBoost || {}) },
@@ -108,12 +136,16 @@ export function useGameData() {
       if (prev.sp <= 0) return prev;
       const newStats = { ...prev.stats, [stat]: prev.stats[stat] + 1 };
       const hpBonus = stat === 'endurance' ? 5 : 0;
+      const effective = {
+        ...newStats,
+        endurance: newStats.endurance + sumGearBonus(prev.gear, prev.equippedGearIds).endurance,
+      };
       ok = true;
       return {
         ...prev,
         sp: prev.sp - 1,
         stats: newStats,
-        hp: Math.min(getMaxHP(newStats), prev.hp + hpBonus),
+        hp: Math.min(getMaxHP(effective), prev.hp + hpBonus),
       };
     });
     return ok;
@@ -144,14 +176,14 @@ export function useGameData() {
 
   const healPlayer = useCallback((amount) => {
     setGameData(prev => {
-      const max = getMaxHP(prev.stats);
+      const max = getMaxHP(getEffectiveStats(prev));
       return { ...prev, hp: Math.min(max, prev.hp + amount) };
     });
   }, []);
 
   const setPlayerHP = useCallback((hp) => {
     setGameData(prev => {
-      const max = getMaxHP(prev.stats);
+      const max = getMaxHP(getEffectiveStats(prev));
       return { ...prev, hp: Math.max(0, Math.min(max, hp)) };
     });
   }, []);
@@ -160,7 +192,7 @@ export function useGameData() {
     let ok = false;
     setGameData(prev => {
       if (prev.potions <= 0) return prev;
-      const max = getMaxHP(prev.stats);
+      const max = getMaxHP(getEffectiveStats(prev));
       if (prev.hp >= max) return prev;
       const healAmt = Math.ceil(max * 0.3);
       ok = true;
@@ -176,7 +208,7 @@ export function useGameData() {
 
   const applyRecovery = useCallback(() => {
     setGameData(prev => {
-      const max = getMaxHP(prev.stats);
+      const max = getMaxHP(getEffectiveStats(prev));
       let { hp, lastRegenAt, lastDailyHealDate } = prev;
       const today = todayKey();
       let changed = false;
@@ -243,11 +275,39 @@ export function useGameData() {
     setGameData(prev => {
       const item = prev.gear.find(g => g.id === gearId);
       if (!item) return prev;
+      // Auto-unequip if currently equipped
+      const newEquipped = { ...prev.equippedGearIds };
+      for (const slot of Object.keys(newEquipped)) {
+        if (newEquipped[slot] === gearId) newEquipped[slot] = null;
+      }
       return {
         ...prev,
         gear: prev.gear.filter(g => g.id !== gearId),
+        equippedGearIds: newEquipped,
         gold: prev.gold + (item.sellValue || 0),
       };
+    });
+  }, []);
+
+  // Equip a gear item into its slot. Replaces whatever was equipped in that slot.
+  const equipGear = useCallback((gearId) => {
+    setGameData(prev => {
+      const item = prev.gear.find(g => g.id === gearId);
+      if (!item || !item.slot) return prev;
+      return {
+        ...prev,
+        equippedGearIds: { ...prev.equippedGearIds, [item.slot]: gearId },
+      };
+    });
+  }, []);
+
+  const unequipGear = useCallback((gearId) => {
+    setGameData(prev => {
+      const newEquipped = { ...prev.equippedGearIds };
+      for (const slot of Object.keys(newEquipped)) {
+        if (newEquipped[slot] === gearId) newEquipped[slot] = null;
+      }
+      return { ...prev, equippedGearIds: newEquipped };
     });
   }, []);
 
@@ -270,6 +330,8 @@ export function useGameData() {
         name: shopItem.name,
         tier: shopItem.tier,
         sellValue: shopItem.sellValue,
+        slot: shopItem.slot,
+        bonus: shopItem.bonus,
       };
       result = { ok: true, item: entry };
       return {
@@ -320,6 +382,8 @@ export function useGameData() {
           name: dropEntry.name,
           tier: dropEntry.tier,
           sellValue: dropEntry.sellValue,
+          slot: dropEntry.slot,
+          bonus: dropEntry.bonus,
         };
         newGear = [entry, ...newGear].slice(0, 60);
         result.drop.entryId = entry.id;
@@ -355,7 +419,14 @@ export function useGameData() {
       let newGear = prev.gear;
       if (kind === 'potion') newPotions += 1;
       else {
-        const entry = { id: `${Date.now()}_${Math.random().toString(36).slice(2, 7)}`, name: dropEntry.name, tier: dropEntry.tier, sellValue: dropEntry.sellValue };
+        const entry = {
+          id: `${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+          name: dropEntry.name,
+          tier: dropEntry.tier,
+          sellValue: dropEntry.sellValue,
+          slot: dropEntry.slot,
+          bonus: dropEntry.bonus,
+        };
         newGear = [entry, ...newGear].slice(0, 60);
       }
 
@@ -511,7 +582,8 @@ export function useGameData() {
     resetGame,
     getDailyMinutes,
     recordDailyMinutes,
-    getMaxHP: () => getMaxHP(gameData.stats),
+    getEffectiveStats: () => getEffectiveStats(gameData),
+    getMaxHP: () => getMaxHP(getEffectiveStats(gameData)),
     damagePlayer,
     healPlayer,
     setPlayerHP,
@@ -521,6 +593,8 @@ export function useGameData() {
     addPotion,
     addGear,
     sellGear,
+    equipGear,
+    unequipGear,
     buyPotion,
     buyGear,
     openMysteryChest,

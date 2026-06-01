@@ -1,7 +1,19 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Coins, Package, FlaskConical, Gift, Sparkles, X, Shield, Sword } from 'lucide-react';
-import { SHOP_ITEMS, TIER_STYLES } from '../data/shop';
+import { Coins, Package, FlaskConical, Gift, Sparkles, X, Shield, Sword, Gem } from 'lucide-react';
+import { SHOP_ITEMS, TIER_STYLES, SLOT_LABEL } from '../data/shop';
+import { sfx } from '../utils/sounds';
+
+const SLOT_ICON = { weapon: Sword, armor: Shield, trinket: Gem };
+
+const formatBonus = (b) => {
+  if (!b) return null;
+  const parts = [];
+  if (b.strength)  parts.push(`+${b.strength} STR`);
+  if (b.agility)   parts.push(`+${b.agility} AGI`);
+  if (b.endurance) parts.push(`+${b.endurance} END`);
+  return parts.join(' · ');
+};
 
 const GoldPill = ({ amount }) => (
   <div className="flex items-center gap-1.5 bg-[#27272A] border-2 border-[#FF8C00]/50 px-2.5 py-1">
@@ -36,6 +48,9 @@ const ShopRow = ({ item, gold, onBuy, onOpenChest }) => {
             </span>
           </div>
           <p className="font-plex text-[11px] text-zinc-400 leading-snug">{item.description}</p>
+          {item.bonus && (
+            <p className="font-pixel text-[7px] text-emerald-300 mt-1">{formatBonus(item.bonus)}</p>
+          )}
         </div>
       </div>
 
@@ -117,8 +132,9 @@ const ChestRevealModal = ({ drop, onClose }) => {
   );
 };
 
-const Market = ({ gameData, initialTab = 'shop', onBuyPotion, onBuyGear, onOpenChest, onSellGear }) => {
-  const { gold, potions, gear } = gameData;
+const Market = ({ gameData, initialTab = 'shop', onBuyPotion, onBuyGear, onOpenChest, onSellGear, onEquipGear, onUnequipGear }) => {
+  const { gold, potions, gear, equippedGearIds } = gameData;
+  const equippedSet = new Set(Object.values(equippedGearIds || {}).filter(Boolean));
   const [tab, setTab] = useState(initialTab);
   const [drop, setDrop] = useState(null);
   const [toast, setToast] = useState(null);
@@ -130,18 +146,17 @@ const Market = ({ gameData, initialTab = 'shop', onBuyPotion, onBuyGear, onOpenC
 
   const handleBuyPotion = () => {
     const res = onBuyPotion(25);
-    if (res.ok) showToast('Potion added to bag.', 'ok');
+    if (res.ok) { sfx.purchase(); showToast('Potion added to bag.', 'ok'); }
     else showToast('Not enough gold.', 'err');
   };
 
   const handleBuyGear = (item) => {
     const res = onBuyGear(item);
-    if (res.ok) showToast(`${item.name} purchased.`, 'ok');
+    if (res.ok) { sfx.purchase(); showToast(`${item.name} purchased.`, 'ok'); }
     else showToast('Not enough gold.', 'err');
   };
 
   const handleOpenChest = () => {
-    // Haptic feedback (mobile only). navigator.vibrate is no-op on desktop.
     if (typeof navigator !== 'undefined' && navigator.vibrate) {
       navigator.vibrate([100, 100, 100, 400]);
     }
@@ -150,12 +165,26 @@ const Market = ({ gameData, initialTab = 'shop', onBuyPotion, onBuyGear, onOpenC
       showToast('Not enough gold.', 'err');
       return;
     }
+    sfx.chestOpen();
     setDrop(res.drop);
   };
 
   const handleSell = (g) => {
+    sfx.coin();
     onSellGear(g.id);
     showToast(`Sold ${g.name} for ${g.sellValue}G.`, 'ok');
+  };
+
+  const handleEquip = (g) => {
+    sfx.equip();
+    onEquipGear(g.id);
+    showToast(`${g.name} equipped.`, 'ok');
+  };
+
+  const handleUnequip = (g) => {
+    sfx.click();
+    onUnequipGear(g.id);
+    showToast(`${g.name} unequipped.`, 'info');
   };
 
   return (
@@ -252,27 +281,67 @@ const Market = ({ gameData, initialTab = 'shop', onBuyPotion, onBuyGear, onOpenC
               <div className="grid grid-cols-1 gap-2">
                 {gear.map((g) => {
                   const tier = TIER_STYLES[g.tier] || TIER_STYLES.I;
+                  const SlotIcon = SLOT_ICON[g.slot] || Sword;
+                  const isEquipped = equippedSet.has(g.id);
+                  const bonusStr = formatBonus(g.bonus);
                   return (
                     <div
                       key={g.id}
                       data-testid={`bag-gear-${g.id}`}
-                      className={`bg-[#18181B] border-2 ${tier.border} p-3 flex items-center gap-3`}
+                      className={`bg-[#18181B] border-2 ${isEquipped ? 'border-emerald-500/70' : tier.border} p-3 flex items-center gap-3`}
                     >
                       <div className={`w-10 h-10 border-2 ${tier.border} ${tier.bg} flex items-center justify-center`}>
-                        <Sword size={16} className={tier.text} />
+                        <SlotIcon size={16} className={tier.text} />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className={`font-pixel text-[10px] ${tier.text} truncate`}>{g.name}</p>
-                        <p className="font-pixel text-[7px] text-zinc-500 mt-0.5">{tier.label}</p>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <p className={`font-pixel text-[10px] ${tier.text} truncate`}>{g.name}</p>
+                          {isEquipped && (
+                            <span className="font-pixel text-[6px] border border-emerald-500/60 text-emerald-300 bg-emerald-500/15 px-1 py-0.5">
+                              EQUIPPED
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2 mt-0.5">
+                          <p className="font-pixel text-[7px] text-zinc-500">{tier.label}</p>
+                          {g.slot && <p className="font-pixel text-[7px] text-zinc-500">· {SLOT_LABEL[g.slot]}</p>}
+                        </div>
+                        {bonusStr && (
+                          <p className="font-pixel text-[7px] text-emerald-300 mt-0.5">{bonusStr}</p>
+                        )}
                       </div>
-                      <button
-                        data-testid={`sell-gear-${g.id}-btn`}
-                        onClick={() => handleSell(g)}
-                        className="font-pixel text-[8px] bg-[#27272A] hover:bg-[#3F3F46] text-zinc-200 px-2.5 py-2 border-2 border-[#52525B] active:translate-y-[1px] transition-all flex items-center gap-1"
-                      >
-                        <Coins size={10} className="text-[#FF8C00]" />
-                        {g.sellValue}
-                      </button>
+                      <div className="flex flex-col gap-1">
+                        {g.slot && (isEquipped ? (
+                          <button
+                            data-testid={`unequip-gear-${g.id}-btn`}
+                            onClick={() => handleUnequip(g)}
+                            className="font-pixel text-[8px] bg-emerald-700 hover:bg-emerald-600 text-white px-2.5 py-1.5 border-2 border-emerald-500 active:translate-y-[1px] transition-all"
+                          >
+                            UNEQUIP
+                          </button>
+                        ) : (
+                          <button
+                            data-testid={`equip-gear-${g.id}-btn`}
+                            onClick={() => handleEquip(g)}
+                            className="font-pixel text-[8px] bg-[#FF4500] hover:bg-[#DC2626] text-white px-2.5 py-1.5 border-2 border-[#FF8C00] active:translate-y-[1px] transition-all"
+                          >
+                            EQUIP
+                          </button>
+                        ))}
+                        <button
+                          data-testid={`sell-gear-${g.id}-btn`}
+                          onClick={() => handleSell(g)}
+                          disabled={isEquipped}
+                          className={`font-pixel text-[8px] px-2.5 py-1.5 border-2 transition-all flex items-center gap-1 ${
+                            isEquipped
+                              ? 'bg-[#27272A] border-[#3F3F46] text-zinc-600 cursor-not-allowed'
+                              : 'bg-[#27272A] hover:bg-[#3F3F46] text-zinc-200 border-[#52525B] active:translate-y-[1px]'
+                          }`}
+                        >
+                          <Coins size={10} className={isEquipped ? 'text-zinc-600' : 'text-[#FF8C00]'} />
+                          {g.sellValue}
+                        </button>
+                      </div>
                     </div>
                   );
                 })}

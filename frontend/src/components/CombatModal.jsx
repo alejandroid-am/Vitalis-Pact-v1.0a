@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Sword, Shield, Heart, Dumbbell, Zap, CheckCircle, XCircle, Package, X, Skull, FlaskConical, Coins } from 'lucide-react';
+import { sfx } from '../utils/sounds';
 
 const TIER_COLORS = {
   I:   { border: 'border-amber-600/60', bg: 'bg-amber-600/10', text: 'text-amber-400', badge: 'bg-amber-600/20 text-amber-400 border-amber-600/40' },
@@ -32,11 +33,12 @@ const HPBar = ({ current, max, color = 'from-red-600 to-orange-500' }) => {
 };
 
 const CombatModal = ({
-  mission, gameData, maxHP, isStiff,
+  mission, gameData, maxHP, isStiff, effectiveStats,
   onPlayerDamage, onSyncHP, onUsePotion,
   onVictory, onDefeat, onClose,
 }) => {
-  const { stats, name, hp: persistedHP, potions } = gameData;
+  const { name, hp: persistedHP, potions } = gameData;
+  const stats = effectiveStats || gameData.stats;
   const { enemy } = mission;
 
   const stiff = !!isStiff;
@@ -83,8 +85,10 @@ const CombatModal = ({
     setEnemyHP(newEnemyHP);
 
     if (enemyEvades) {
+      sfx.dodge();
       pushLog(`${enemy.name} dodges your strike!`, 'enemy');
     } else {
+      sfx.hit();
       pushLog(`You strike for ${dmg} damage!`, 'player');
     }
 
@@ -98,6 +102,7 @@ const CombatModal = ({
       }
       const gold = range.min + Math.floor(Math.random() * (range.max - range.min + 1));
       setGoldEarned(gold);
+      sfx.victory();
       pushLog(`>>> ENEMY DEFEATED! +${gold}G`, 'system');
       setTimeout(() => { setPhase('victory'); setBusy(false); }, 800);
       return;
@@ -109,6 +114,7 @@ const CombatModal = ({
       const eDmg = Math.max(1, Math.round((enemy.attack + Math.floor(Math.random() * 2)) * STIFF_IN));
 
       if (playerEvades) {
+        sfx.dodge();
         pushLog(`You dodge ${enemy.name}'s counter!`, 'player');
         setBusy(false);
         return;
@@ -118,9 +124,11 @@ const CombatModal = ({
       setPlayerHPLocal(newPHP);
       onPlayerDamage(eDmg);   // persist immediately
       triggerShake();
+      sfx.critical();
       pushLog(`${enemy.name} hits you for ${eDmg}!`, 'enemy');
 
       if (newPHP <= 0) {
+        sfx.defeat();
         pushLog('>>> You have fallen in battle...', 'system');
         setTimeout(() => { setPhase('defeat'); setBusy(false); }, 800);
         return;
@@ -133,6 +141,7 @@ const CombatModal = ({
     if (busy || potions <= 0 || playerHP >= playerMaxHP) return;
     const ok = onUsePotion();
     if (ok) {
+      sfx.potion();
       pushLog(`You drink a Health Potion!`, 'player');
       // Enemy gets a free hit after potion use (cost of action)
       setBusy(true);

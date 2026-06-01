@@ -11,17 +11,21 @@ import WorkoutModal from './components/WorkoutModal';
 import LevelUpModal from './components/LevelUpModal';
 import CombatModal from './components/CombatModal';
 import DailyBoostModal from './components/DailyBoostModal';
+import TutorialOverlay from './components/TutorialOverlay';
 import { GEAR_POOL } from './data/shop';
+import { sfx, unlockAudio } from './utils/sounds';
 
 const ENEMY_BUFF = 1.17;
+const TUTORIAL_KEY = 'fq_tutorial_completed';
 const todayKey = () => new Date().toISOString().split('T')[0];
 
 function App() {
   const {
     gameData, updateGameData, addXP, upgradeStat, addToInventory,
     getDailyMinutes, recordDailyMinutes,
-    getMaxHP, damagePlayer, setPlayerHP, usePotion,
-    addGold, buyPotion, buyGear, sellGear, openMysteryChest, grantFreeChest, addGear, addPotion,
+    getMaxHP, getEffectiveStats, damagePlayer, setPlayerHP, usePotion: drinkPotion,
+    addGold, buyPotion, buyGear, sellGear, equipGear, unequipGear,
+    openMysteryChest, grantFreeChest, addGear, addPotion,
     recordWorkout, recordEnemyDefeat, isStiff, getDailyBoostStatus,
   } = useGameData();
 
@@ -32,12 +36,27 @@ function App() {
   const [activeMission, setActiveMission] = useState(null);
   const [dailyBoostOpen, setDailyBoostOpen] = useState(false);
   const [boostClaimedToast, setBoostClaimedToast] = useState(null);
+  const [tutorialOpen, setTutorialOpen] = useState(false);
 
   const isOnboarding = !gameData.name || !gameData.characterClass;
 
-  // Show Daily Boost popup once per day on app load (after onboarding)
+  // Unlock audio context on first user interaction
+  useEffect(() => {
+    const handler = () => { unlockAudio(); window.removeEventListener('pointerdown', handler); };
+    window.addEventListener('pointerdown', handler);
+    return () => window.removeEventListener('pointerdown', handler);
+  }, []);
+
+  // Tutorial on first launch after onboarding
   useEffect(() => {
     if (isOnboarding) return;
+    const done = localStorage.getItem(TUTORIAL_KEY) === '1';
+    if (!done) setTutorialOpen(true);
+  }, [isOnboarding]);
+
+  // Daily boost popup once per day on load
+  useEffect(() => {
+    if (isOnboarding || tutorialOpen) return;
     const lastShown = localStorage.getItem('fq_boost_shown_date');
     if (lastShown !== todayKey()) {
       const status = getDailyBoostStatus();
@@ -47,10 +66,15 @@ function App() {
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOnboarding]);
+  }, [isOnboarding, tutorialOpen]);
 
   const handleOnboarding = (name, characterClass) => {
     updateGameData({ name, characterClass });
+  };
+
+  const handleTutorialComplete = () => {
+    localStorage.setItem(TUTORIAL_KEY, '1');
+    setTutorialOpen(false);
   };
 
   const handleLogWorkout = (minutes, activityType) => {
@@ -62,30 +86,31 @@ function App() {
     const xpGained = isBonus ? Math.round(baseXP * 1.2) : baseXP;
     const { levelsGained, newLevel } = addXP(xpGained);
 
-    // Record streak, lifetime minutes, lastWorkoutAt; auto-claim daily boost if applicable
     const boostClaim = recordWorkout(minutes);
 
     setWorkoutOpen(false);
 
     if (boostClaim) {
       addGold(boostClaim.gold);
+      sfx.coin();
       let chestDrop = null;
       if (boostClaim.chest) {
         const r = grantFreeChest();
         chestDrop = r.drop;
+        sfx.chestOpen();
       }
       setBoostClaimedToast({ ...boostClaim, chestDrop });
       setTimeout(() => setBoostClaimedToast(null), 4500);
     }
 
     if (levelsGained > 0) {
+      sfx.levelUp();
       setLevelUpData({ levelsGained, newLevel, xpGained });
     }
   };
 
   const handleAttemptMission = (mission) => {
     if (mission.isSpecial) {
-      // Special events: enemy already scaled in buildSpecialMission; don't buff again
       setActiveMission(mission);
       return;
     }
@@ -105,7 +130,6 @@ function App() {
     if (goldEarned > 0) addGold(goldEarned);
     recordEnemyDefeat({ isSpecial: !!activeMission.isSpecial });
 
-    // Special events grant a guaranteed epic gear drop
     if (activeMission.isSpecial && activeMission.epicGuaranteed) {
       const pool = GEAR_POOL.epic;
       const pick = pool[Math.floor(Math.random() * pool.length)];
@@ -117,6 +141,7 @@ function App() {
   const handleCombatDefeat = () => setActiveMission(null);
 
   const handleOpenBag = () => {
+    sfx.click();
     setMarketTab('bag');
     setScreen('market');
   };
@@ -124,6 +149,8 @@ function App() {
   if (isOnboarding) {
     return <Onboarding onComplete={handleOnboarding} />;
   }
+
+  const effStats = getEffectiveStats();
 
   return (
     <div className="min-h-screen bg-[#09090B]">
@@ -133,8 +160,8 @@ function App() {
             gameData={gameData}
             maxHP={getMaxHP()}
             isStiff={isStiff()}
-            onLogWorkout={() => setWorkoutOpen(true)}
-            onUsePotion={usePotion}
+            onLogWorkout={() => { sfx.click(); setWorkoutOpen(true); }}
+            onUsePotion={() => { const ok = drinkPotion(); if (ok) sfx.potion(); return ok; }}
           />
         )}
         {screen === 'hero' && (
@@ -142,8 +169,9 @@ function App() {
             gameData={gameData}
             maxHP={getMaxHP()}
             isStiff={isStiff()}
-            onUpgradeStat={upgradeStat}
-            onUsePotion={usePotion}
+            effectiveStats={effStats}
+            onUpgradeStat={(s) => { const ok = upgradeStat(s); if (ok) sfx.click(); return ok; }}
+            onUsePotion={() => { const ok = drinkPotion(); if (ok) sfx.potion(); return ok; }}
             onOpenBag={handleOpenBag}
           />
         )}
@@ -155,12 +183,14 @@ function App() {
             onBuyGear={buyGear}
             onOpenChest={openMysteryChest}
             onSellGear={sellGear}
+            onEquipGear={equipGear}
+            onUnequipGear={unequipGear}
           />
         )}
         {screen === 'exploration' && (
           <Exploration gameData={gameData} onAttemptMission={handleAttemptMission} />
         )}
-        <BottomNav screen={screen} onNavigate={setScreen} />
+        <BottomNav screen={screen} onNavigate={(s) => { sfx.click(); setScreen(s); }} />
       </div>
 
       {workoutOpen && (
@@ -180,9 +210,10 @@ function App() {
           gameData={gameData}
           maxHP={getMaxHP()}
           isStiff={isStiff()}
+          effectiveStats={effStats}
           onPlayerDamage={damagePlayer}
           onSyncHP={setPlayerHP}
-          onUsePotion={usePotion}
+          onUsePotion={drinkPotion}
           onVictory={handleCombatVictory}
           onDefeat={handleCombatDefeat}
           onClose={() => setActiveMission(null)}
@@ -193,6 +224,9 @@ function App() {
           status={getDailyBoostStatus()}
           onClose={() => setDailyBoostOpen(false)}
         />
+      )}
+      {tutorialOpen && (
+        <TutorialOverlay onComplete={handleTutorialComplete} />
       )}
       {boostClaimedToast && (
         <div
