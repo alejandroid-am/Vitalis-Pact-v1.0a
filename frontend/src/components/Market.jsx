@@ -22,7 +22,7 @@ const GoldPill = ({ amount }) => (
   </div>
 );
 
-const ShopRow = ({ item, gold, onBuy, onOpenChest }) => {
+const ShopRow = ({ item, gold, onBuy, onOpenChest, chestLocked }) => {
   const canAfford = gold >= item.price;
   const tier = TIER_STYLES[item.tier] || TIER_STYLES.I;
 
@@ -62,9 +62,9 @@ const ShopRow = ({ item, gold, onBuy, onOpenChest }) => {
         <button
           data-testid={isChest ? 'open-chest-btn' : `buy-${item.id}-btn`}
           onClick={() => (isChest ? onOpenChest() : onBuy(item))}
-          disabled={!canAfford}
+          disabled={!canAfford || (isChest && chestLocked)}
           className={`font-pixel text-[9px] px-3 py-2 border-2 transition-all ${
-            canAfford
+            canAfford && !(isChest && chestLocked)
               ? isChest
                 ? 'bg-[#FF4500] hover:bg-[#DC2626] border-[#FF8C00] text-white shadow-[inset_-2px_-2px_0px_rgba(0,0,0,0.4),_2px_2px_0px_rgba(0,0,0,1)] active:translate-y-[1px]'
                 : 'bg-zinc-200 hover:bg-white text-[#09090B] border-zinc-400 shadow-[inset_-2px_-2px_0px_rgba(0,0,0,0.2),_2px_2px_0px_rgba(0,0,0,1)] active:translate-y-[1px]'
@@ -243,6 +243,7 @@ const Market = ({ gameData, initialTab = 'shop', onBuyPotion, onBuyGear, onOpenC
                 <ShopRow
                   item={it}
                   gold={gold}
+                  chestLocked={!!drop}
                   onBuy={(item) => {
                     if (item.type === 'potion') handleBuyPotion();
                     else handleBuyGear(item);

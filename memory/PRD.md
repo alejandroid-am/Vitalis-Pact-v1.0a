@@ -201,10 +201,47 @@ A fitness app powered by RPG mechanics. The user flow is:
 
 ## Prioritized Backlog
 
+## Implemented - V3.2 (Feb 2026) — Tutorial, Sound FX, Functional Gear
+
+### Onboarding Tutorial Carousel
+- 5-slide overlay on first launch after name/class selection
+- Slides: Welcome → HP & Recovery → Market & Mystery Chests → Stiffness Debuff → Special Events
+- Progress dots + SKIP button + final "BEGIN THE QUEST" CTA
+- Persists via `localStorage.fq_tutorial_completed = '1'` (does not reappear)
+
+### Sound FX System (Web Audio API, zero assets)
+- Programmatic chiptune synthesizer in `/utils/sounds.js`
+- 13 sound effects: click, hover, coin, potion, hit, critical, dodge, levelUp, chestOpen, victory, defeat, equip, purchase, achievement
+- Lazy AudioContext (browser autoplay policy compliant); unlocked on first pointerdown
+- Mute toggle in Camp header (Volume2/VolumeX icons); persisted to `localStorage.fq_sound_muted`
+- Sounds wired throughout: combat, navigation, market, hero, daily boost, level up
+
+### Functional Gear System
+- Every gear item carries `slot` (weapon/armor/trinket) + `bonus` (STR/AGI/END)
+- 3 equip slots, 1 item per slot; equipping replaces the slot's prior item
+- Effective stats = base stats + sum of equipped gear bonuses
+- Effective endurance feeds max HP calculation
+- Effective STR/AGI/END drive combat (playerAttack, dodge, max HP)
+- Hero shows Equipped section + per-attribute `base +bonus` emerald label
+- Market BAG renders slot label + bonus text; EQUIP/UNEQUIP buttons; SELL disabled while equipped
+- SHOP_ITEMS and GEAR_POOL (common/epic/legendary) all carry slot + bonus
+- Bug fix: `buyGear`, `openMysteryChest`, `grantFreeChest` now persist `slot` + `bonus` on every gear entry
+- Chest OPEN button is locked while reveal modal is on-screen (prevents race-condition double-opens)
+
+### Data Model Additions
+```json
+{
+  "equippedGearIds": { "weapon": null, "armor": null, "trinket": null }
+}
+```
+Each gear entry now also includes: `{ slot: 'weapon'|'armor'|'trinket', bonus: { strength, agility, endurance } }`
+
+## Prioritized Backlog
+
 ### P0 - Next Sprint
-- [ ] Friends system (visibility of achievements + leaderboard) — user-flagged for future
-- [ ] Onboarding tutorial that explains new mechanics (HP regen, Market, Stiffness, Special Events)
-- [ ] Sound effects on chest open, level up, mission victory
+- [ ] Weekly Challenges (large weekly target → Legendary Chest)
+- [ ] Friends system + visibility of achievements + leaderboard
+- [ ] Workout History in Camp (last 5 sessions)
 
 ### P1 - High Value
 - [ ] Workout history log (last 5 sessions on Camp screen)
