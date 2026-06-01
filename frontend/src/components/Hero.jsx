@@ -1,10 +1,9 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Dumbbell, Zap, Heart, Plus, Package, Coins, FlaskConical, Sword, Backpack, AlertTriangle, Shield, Gem, Share2 } from 'lucide-react';
+import { Dumbbell, Zap, Heart, Plus, Package, Coins, FlaskConical, Sword, Backpack, AlertTriangle, Shield, Gem } from 'lucide-react';
 import { STAT_LABELS } from '../data/missions';
 import { TIER_STYLES, SLOT_LABEL } from '../data/shop';
 import AchievementsPanel from './AchievementsPanel';
-import { shareHeroCard } from '../utils/heroCard';
 import { sfx } from '../utils/sounds';
 
 const SLOT_ICON = { weapon: Sword, armor: Shield, trinket: Gem };
@@ -137,11 +136,11 @@ const Hero = ({ gameData, maxHP, isStiff, effectiveStats, onUpgradeStat, onUsePo
         <HPRow hp={hp} maxHP={maxHP} potions={gameData.potions} onUsePotion={onUsePotion} />
 
         {/* OPEN BAG shortcut + SHARE */}
-        <div className="grid grid-cols-2 gap-2">
+        <div>
           <button
             data-testid="open-bag-btn"
             onClick={onOpenBag}
-            className="bg-[#18181B] hover:bg-[#27272A] border-2 border-[#FF8C00]/40 hover:border-[#FF8C00] p-3 flex items-center justify-between transition-all active:translate-y-[1px]"
+            className="w-full bg-[#18181B] hover:bg-[#27272A] border-2 border-[#FF8C00]/40 hover:border-[#FF8C00] p-3 flex items-center justify-between transition-all active:translate-y-[1px]"
           >
             <div className="flex items-center gap-2">
               <Backpack size={16} className="text-[#FF8C00]" />
@@ -151,23 +150,6 @@ const Hero = ({ gameData, maxHP, isStiff, effectiveStats, onUpgradeStat, onUsePo
               </div>
             </div>
             <span className="font-pixel text-[8px] text-[#FF8C00]">→</span>
-          </button>
-          <button
-            data-testid="share-hero-btn"
-            onClick={async () => {
-              sfx.click();
-              try { await shareHeroCard(gameData, eff); } catch (err) { console.error('[hero] share failed:', err); }
-            }}
-            className="bg-[#18181B] hover:bg-[#27272A] border-2 border-purple-500/40 hover:border-purple-400 p-3 flex items-center justify-between transition-all active:translate-y-[1px]"
-          >
-            <div className="flex items-center gap-2">
-              <Share2 size={16} className="text-purple-300" />
-              <div className="text-left">
-                <p className="font-pixel text-[9px] text-zinc-200">SHARE</p>
-                <p className="font-plex text-[9px] text-zinc-500">Hero card</p>
-              </div>
-            </div>
-            <span className="font-pixel text-[8px] text-purple-300">→</span>
           </button>
         </div>
 

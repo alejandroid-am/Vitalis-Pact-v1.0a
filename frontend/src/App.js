@@ -46,6 +46,7 @@ function App() {
   const [boostClaimedToast, setBoostClaimedToast] = useState(null);
   const [tutorialOpen, setTutorialOpen] = useState(false);
   const [unlockQueue, setUnlockQueue] = useState([]);
+  const queuedUnlocksRef = useRef(new Set()); // dedupe "id:tier" already enqueued or shown
 
   const isOnboarding = !gameData.name || !gameData.characterClass;
 
@@ -70,6 +71,7 @@ function App() {
   useEffect(() => {
     if (isOnboarding) return;
     const seen = gameData.seenAchievementTiers || {};
+    const queued = queuedUnlocksRef.current;
     const newUnlocks = [];
     ACHIEVEMENTS.forEach((def) => {
       const value = def.getValue(gameData);
@@ -79,6 +81,9 @@ function App() {
       const earnedIdx = TIERS.indexOf(earned);
       const prevIdx = prevTier ? TIERS.indexOf(prevTier) : -1;
       if (earnedIdx > prevIdx) {
+        const key = `${def.id}:${earned}`;
+        if (queued.has(key)) return; // already enqueued / showing
+        queued.add(key);
         newUnlocks.push({ achievement: def, tier: earned });
       }
     });
@@ -180,7 +185,11 @@ function App() {
 
   const handleUnlockClose = () => {
     const head = unlockQueue[0];
-    if (head) markAchievementSeen(head.achievement.id, head.tier);
+    if (head) {
+      markAchievementSeen(head.achievement.id, head.tier);
+      // Allow this id:tier to be re-detected later only if user resets — typically never re-fires
+      // (kept in ref so HP-regen re-renders don't re-enqueue while modal is open)
+    }
     setUnlockQueue((q) => q.slice(1));
   };
 

@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import {
   ArrowLeft, Volume2, VolumeX, Smartphone, SmartphoneNfc, Palette, BarChart3,
   Download, Upload, RefreshCw, BookOpen, Info, FileText, Lock, Users, Coins, Flame, Skull, Gift, FlaskConical, Clock,
-  DownloadCloud, Bell, BellOff, Share2,
+  DownloadCloud, Bell, BellOff,
 } from 'lucide-react';
 import { isMuted as sndMuted, toggleMuted as sndToggle, onMuteChange as sndOnChange, sfx } from '../utils/sounds';
 import { isHapticMuted, toggleHapticMuted, onHapticChange, vibrate } from '../utils/haptics';
@@ -11,7 +11,6 @@ import {
   canInstall, promptInstall, onInstallPromptChange,
   isNotificationsEnabled, requestNotificationPermission, disableNotifications,
 } from '../utils/pwa';
-import { shareHeroCard } from '../utils/heroCard';
 
 const APP_VERSION = '1.0.0';
 
@@ -195,17 +194,6 @@ const Settings = ({ gameData, effectiveStats, onBack, onOpenFriends, onResetGame
     else if (res.reason === 'unavailable') showToast('Already installed or unsupported.', 'info');
   };
 
-  const handleShareCard = async () => {
-    sfx.click();
-    try {
-      const res = await shareHeroCard(gameData, effectiveStats);
-      if (res.ok) showToast(res.method === 'share' ? 'Shared!' : 'Image downloaded.', 'ok');
-    } catch (err) {
-      console.error('[settings] share failed:', err);
-      showToast('Could not generate image.', 'err');
-    }
-  };
-
   return (
     <div className="bg-[#09090B] min-h-[calc(100vh-4rem)] flex flex-col">
       {/* Header */}
@@ -299,13 +287,6 @@ const Settings = ({ gameData, effectiveStats, onBack, onOpenFriends, onResetGame
               hint="Local notifications when you skip a workout."
               onClick={handleToggleNotifications}
               right={<Switch on={notifEnabled} onClick={handleToggleNotifications} testId="settings-notifications-switch" />}
-            />
-            <Row
-              testId="settings-share-row"
-              icon={Share2}
-              label="Share Hero Card"
-              hint="Generate a PNG of your hero to share."
-              onClick={handleShareCard}
             />
           </div>
         </div>
