@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" fill="#09090B"/>
+  <rect x="32" y="32" width="448" height="448" fill="none" stroke="#FF4500" stroke-width="16"/>
+  <g transform="translate(256,256)">
+    <!-- Sword silhouette -->
+    <polygon points="0,-150 -22,-100 -22,80 -40,80 -40,110 -16,110 -16,150 16,150 16,110 40,110 40,80 22,80 22,-100" fill="#FF4500"/>
+    <rect x="-58" y="60" width="116" height="14" fill="#FF8C00"/>
+  </g>
+  <text x="256" y="460" font-family="monospace" font-size="32" font-weight="bold" fill="#FF8C00" text-anchor="middle">VITALIS PACT</text>
+</svg>

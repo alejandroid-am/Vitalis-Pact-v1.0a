@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Sword, Shield, Heart, Dumbbell, Zap, CheckCircle, XCircle, Package, X, Skull, FlaskConical, Coins } from 'lucide-react';
 import { sfx } from '../utils/sounds';
+import FloatingNumbers from './FloatingNumbers';
 
 const TIER_COLORS = {
   I:   { border: 'border-amber-600/60', bg: 'bg-amber-600/10', text: 'text-amber-400', badge: 'bg-amber-600/20 text-amber-400 border-amber-600/40' },
@@ -60,6 +61,16 @@ const CombatModal = ({
   const [busy, setBusy] = useState(false);
   const [shakeKey, setShakeKey] = useState(0);
   const [goldEarned, setGoldEarned] = useState(0);
+  const [floats, setFloats] = useState([]);
+
+  const pushFloat = (value, type, side = 'enemy') => {
+    const id = `${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+    // side 'enemy' = right half, side 'player' = left half
+    const baseX = side === 'enemy' ? 70 : 30;
+    const x = baseX + (Math.random() * 14 - 7);
+    setFloats(prev => [...prev, { id, value, type, x }]);
+    setTimeout(() => setFloats(prev => prev.filter(f => f.id !== id)), 1000);
+  };
 
   // Keep local HP in sync if persistedHP changes externally (e.g. potion use)
   useEffect(() => {
@@ -86,9 +97,11 @@ const CombatModal = ({
 
     if (enemyEvades) {
       sfx.dodge();
+      pushFloat('MISS', 'dodge', 'enemy');
       pushLog(`${enemy.name} dodges your strike!`, 'enemy');
     } else {
       sfx.hit();
+      pushFloat(`-${dmg}`, 'dmg-out', 'enemy');
       pushLog(`You strike for ${dmg} damage!`, 'player');
     }
 
@@ -115,6 +128,7 @@ const CombatModal = ({
 
       if (playerEvades) {
         sfx.dodge();
+        pushFloat('DODGE', 'dodge', 'player');
         pushLog(`You dodge ${enemy.name}'s counter!`, 'player');
         setBusy(false);
         return;
@@ -125,6 +139,7 @@ const CombatModal = ({
       onPlayerDamage(eDmg);   // persist immediately
       triggerShake();
       sfx.critical();
+      pushFloat(`-${eDmg}`, 'dmg-in', 'player');
       pushLog(`${enemy.name} hits you for ${eDmg}!`, 'enemy');
 
       if (newPHP <= 0) {
@@ -139,9 +154,14 @@ const CombatModal = ({
 
   const handlePotion = () => {
     if (busy || potions <= 0 || playerHP >= playerMaxHP) return;
+    const beforeHP = playerHP;
     const ok = onUsePotion();
     if (ok) {
       sfx.potion();
+      // Compute heal amount (matches useGameData usePotion logic: ceil(max * 0.3))
+      const healAmt = Math.ceil(playerMaxHP * 0.3);
+      const actual = Math.min(playerMaxHP, beforeHP + healAmt) - beforeHP;
+      pushFloat(`+${actual}`, 'heal', 'player');
       pushLog(`You drink a Health Potion!`, 'player');
       // Enemy gets a free hit after potion use (cost of action)
       setBusy(true);
@@ -149,6 +169,8 @@ const CombatModal = ({
         const playerEvades = Math.random() * 100 < playerDodgePct;
         const eDmg = Math.max(1, Math.round((enemy.attack + Math.floor(Math.random() * 2)) * STIFF_IN));
         if (playerEvades) {
+          sfx.dodge();
+          pushFloat('DODGE', 'dodge', 'player');
           pushLog(`You dodge while drinking!`, 'player');
           setBusy(false);
           return;
@@ -156,6 +178,7 @@ const CombatModal = ({
         // Use the freshly-healed HP from persistedHP state via onPlayerDamage
         onPlayerDamage(eDmg);
         triggerShake();
+        pushFloat(`-${eDmg}`, 'dmg-in', 'player');
         pushLog(`${enemy.name} hits you for ${eDmg}!`, 'enemy');
         setBusy(false);
       }, 600);
@@ -217,7 +240,7 @@ const CombatModal = ({
             )}
             {stiff && (
               <div className="bg-red-950/40 border border-red-500/50 px-2 py-1.5 mb-2">
-                <p className="font-pixel text-[8px] text-red-300">⚠ STIFFNESS ACTIVE — -30% ATK · +30% TAKEN</p>
+                <p className="font-pixel text-[8px] text-red-300">⚠ RUSTED — -30% ATK · +30% TAKEN</p>
               </div>
             )}
 
@@ -295,8 +318,9 @@ const CombatModal = ({
           initial={{ x: 0, y: 0 }}
           animate={{ x: [0, -6, 6, -4, 4, 0], y: [0, 2, -2, 1, -1, 0] }}
           transition={{ duration: 0.35 }}
-          className="bg-[#18181B] border-4 border-[#3F3F46] w-full max-w-sm shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]"
+          className="bg-[#18181B] border-4 border-[#3F3F46] w-full max-w-sm shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] relative"
         >
+          <FloatingNumbers numbers={floats} />
           {/* HP Bars */}
           <div className="grid grid-cols-2 divide-x-2 divide-[#3F3F46]">
             <div className="p-3">

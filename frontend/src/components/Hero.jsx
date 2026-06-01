@@ -1,9 +1,11 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Dumbbell, Zap, Heart, Plus, Package, Coins, FlaskConical, Sword, Backpack, AlertTriangle, Shield, Gem } from 'lucide-react';
+import { Dumbbell, Zap, Heart, Plus, Package, Coins, FlaskConical, Sword, Backpack, AlertTriangle, Shield, Gem, Share2 } from 'lucide-react';
 import { STAT_LABELS } from '../data/missions';
 import { TIER_STYLES, SLOT_LABEL } from '../data/shop';
 import AchievementsPanel from './AchievementsPanel';
+import { shareHeroCard } from '../utils/heroCard';
+import { sfx } from '../utils/sounds';
 
 const SLOT_ICON = { weapon: Sword, armor: Shield, trinket: Gem };
 
@@ -74,9 +76,9 @@ const StiffnessBanner = () => (
     />
     <AlertTriangle size={20} className="text-red-400 flex-shrink-0 relative" />
     <div className="relative flex-1">
-      <p data-testid="stiffness-banner" className="font-pixel text-[10px] text-red-300 mb-0.5">STIFFNESS — ENTUMECIDO</p>
+      <p data-testid="rusted-banner" className="font-pixel text-[10px] text-red-300 mb-0.5">RUSTED</p>
       <p className="font-plex text-[11px] text-red-200/80 leading-snug">
-        Inactive for 48h+. <span className="text-red-300">-30% damage</span>, <span className="text-red-300">+30% taken</span>. Train to cure.
+        Inactive for 48h+. <span className="text-red-300">-30% damage</span>, <span className="text-red-300">+30% taken</span>. Train to forge yourself back.
       </p>
     </div>
   </motion.div>
@@ -96,7 +98,7 @@ const Hero = ({ gameData, maxHP, isStiff, effectiveStats, onUpgradeStat, onUsePo
   return (
     <div className="bg-[#09090B] min-h-[calc(100vh-4rem)] flex flex-col">
       <div className="bg-[#18181B] border-b-2 border-[#3F3F46] px-4 py-3 flex items-center justify-between">
-        <span className="font-pixel text-[#FF4500] text-[11px]">FITNESS QUEST</span>
+        <span className="font-pixel text-[#FF4500] text-[11px]">VITALIS PACT</span>
         <div className="flex items-center gap-2">
           <div className="flex items-center gap-1 bg-[#27272A] border-2 border-[#FF8C00]/50 px-2 py-1">
             <Coins size={10} className="text-[#FF8C00]" />
@@ -134,21 +136,40 @@ const Hero = ({ gameData, maxHP, isStiff, effectiveStats, onUpgradeStat, onUsePo
         {/* HP bar + potion */}
         <HPRow hp={hp} maxHP={maxHP} potions={gameData.potions} onUsePotion={onUsePotion} />
 
-        {/* OPEN BAG shortcut */}
-        <button
-          data-testid="open-bag-btn"
-          onClick={onOpenBag}
-          className="w-full bg-[#18181B] hover:bg-[#27272A] border-2 border-[#FF8C00]/40 hover:border-[#FF8C00] p-3 flex items-center justify-between transition-all active:translate-y-[1px]"
-        >
-          <div className="flex items-center gap-3">
-            <Backpack size={18} className="text-[#FF8C00]" />
-            <div className="text-left">
-              <p className="font-pixel text-[10px] text-zinc-200">OPEN BAG</p>
-              <p className="font-plex text-[10px] text-zinc-500">{gameData.potions} potions · {gear.length} gear</p>
+        {/* OPEN BAG shortcut + SHARE */}
+        <div className="grid grid-cols-2 gap-2">
+          <button
+            data-testid="open-bag-btn"
+            onClick={onOpenBag}
+            className="bg-[#18181B] hover:bg-[#27272A] border-2 border-[#FF8C00]/40 hover:border-[#FF8C00] p-3 flex items-center justify-between transition-all active:translate-y-[1px]"
+          >
+            <div className="flex items-center gap-2">
+              <Backpack size={16} className="text-[#FF8C00]" />
+              <div className="text-left">
+                <p className="font-pixel text-[9px] text-zinc-200">BAG</p>
+                <p className="font-plex text-[9px] text-zinc-500">{gameData.potions} · {gear.length}</p>
+              </div>
             </div>
-          </div>
-          <span className="font-pixel text-[9px] text-[#FF8C00]">→</span>
-        </button>
+            <span className="font-pixel text-[8px] text-[#FF8C00]">→</span>
+          </button>
+          <button
+            data-testid="share-hero-btn"
+            onClick={async () => {
+              sfx.click();
+              try { await shareHeroCard(gameData, eff); } catch (err) { console.error('[hero] share failed:', err); }
+            }}
+            className="bg-[#18181B] hover:bg-[#27272A] border-2 border-purple-500/40 hover:border-purple-400 p-3 flex items-center justify-between transition-all active:translate-y-[1px]"
+          >
+            <div className="flex items-center gap-2">
+              <Share2 size={16} className="text-purple-300" />
+              <div className="text-left">
+                <p className="font-pixel text-[9px] text-zinc-200">SHARE</p>
+                <p className="font-plex text-[9px] text-zinc-500">Hero card</p>
+              </div>
+            </div>
+            <span className="font-pixel text-[8px] text-purple-300">→</span>
+          </button>
+        </div>
 
         {/* SP instructions */}
         {sp > 0 && (

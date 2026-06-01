@@ -1,0 +1,20 @@
+{
+  "short_name": "Vitalis Pact",
+  "name": "Vitalis Pact — Train your body, forge your hero",
+  "description": "A gamified fitness RPG where real workouts level up your hero.",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "type": "image/svg+xml",
+      "sizes": "any",
+      "purpose": "any maskable"
+    }
+  ],
+  "start_url": ".",
+  "display": "standalone",
+  "orientation": "portrait",
+  "theme_color": "#FF4500",
+  "background_color": "#09090B",
+  "categories": ["games", "health", "fitness"],
+  "lang": "en"
+}

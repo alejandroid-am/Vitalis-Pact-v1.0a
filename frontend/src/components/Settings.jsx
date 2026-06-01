@@ -3,9 +3,15 @@ import { motion } from 'framer-motion';
 import {
   ArrowLeft, Volume2, VolumeX, Smartphone, SmartphoneNfc, Palette, BarChart3,
   Download, Upload, RefreshCw, BookOpen, Info, FileText, Lock, Users, Coins, Flame, Skull, Gift, FlaskConical, Clock,
+  DownloadCloud, Bell, BellOff, Share2,
 } from 'lucide-react';
 import { isMuted as sndMuted, toggleMuted as sndToggle, onMuteChange as sndOnChange, sfx } from '../utils/sounds';
 import { isHapticMuted, toggleHapticMuted, onHapticChange, vibrate } from '../utils/haptics';
+import {
+  canInstall, promptInstall, onInstallPromptChange,
+  isNotificationsEnabled, requestNotificationPermission, disableNotifications,
+} from '../utils/pwa';
+import { shareHeroCard } from '../utils/heroCard';
 
 const APP_VERSION = '1.0.0';
 
@@ -110,15 +116,18 @@ const ConfirmResetModal = ({ onConfirm, onCancel }) => {
   );
 };
 
-const Settings = ({ gameData, onBack, onOpenFriends, onResetGame, onResetTutorial, onExport, onImport }) => {
+const Settings = ({ gameData, effectiveStats, onBack, onOpenFriends, onResetGame, onResetTutorial, onExport, onImport }) => {
   const [muted, setMuted] = useState(sndMuted());
   const [hapticMuted, setHapticMutedState] = useState(isHapticMuted());
+  const [installAvailable, setInstallAvailable] = useState(canInstall());
+  const [notifEnabled, setNotifEnabled] = useState(isNotificationsEnabled());
   const [confirmReset, setConfirmReset] = useState(false);
   const [toast, setToast] = useState(null);
   const fileInputRef = useRef(null);
 
   useEffect(() => sndOnChange(setMuted), []);
   useEffect(() => onHapticChange(setHapticMutedState), []);
+  useEffect(() => onInstallPromptChange(setInstallAvailable), []);
 
   const showToast = (msg, type = 'info') => {
     setToast({ msg, type, id: Date.now() });
@@ -159,6 +168,41 @@ const Settings = ({ gameData, onBack, onOpenFriends, onResetGame, onResetTutoria
       showToast('Could not read file.', 'err');
     } finally {
       e.target.value = '';
+    }
+  };
+
+  const handleToggleNotifications = async () => {
+    sfx.click();
+    if (notifEnabled) {
+      disableNotifications();
+      setNotifEnabled(false);
+      showToast('Reminders disabled.', 'info');
+      return;
+    }
+    const res = await requestNotificationPermission();
+    if (res.ok) {
+      setNotifEnabled(true);
+      showToast('Reminders enabled.', 'ok');
+    } else {
+      showToast(`Reminders denied (${res.reason}).`, 'err');
+    }
+  };
+
+  const handleInstall = async () => {
+    sfx.click();
+    const res = await promptInstall();
+    if (res.ok && res.outcome === 'accepted') showToast('Installing app...', 'ok');
+    else if (res.reason === 'unavailable') showToast('Already installed or unsupported.', 'info');
+  };
+
+  const handleShareCard = async () => {
+    sfx.click();
+    try {
+      const res = await shareHeroCard(gameData, effectiveStats);
+      if (res.ok) showToast(res.method === 'share' ? 'Shared!' : 'Image downloaded.', 'ok');
+    } catch (err) {
+      console.error('[settings] share failed:', err);
+      showToast('Could not generate image.', 'err');
     }
   };
 
@@ -236,6 +280,36 @@ const Settings = ({ gameData, onBack, onOpenFriends, onResetGame, onResetTutoria
           </div>
         </div>
 
+        {/* APP */}
+        <div>
+          <p className="font-pixel text-[8px] text-zinc-500 uppercase mb-2">App</p>
+          <div className="space-y-2">
+            <Row
+              testId="settings-install-row"
+              icon={DownloadCloud}
+              label="Install App"
+              hint={installAvailable ? 'Add to home screen for a native feel.' : 'Already installed or browser unsupported.'}
+              onClick={installAvailable ? handleInstall : undefined}
+              disabled={!installAvailable}
+            />
+            <Row
+              testId="settings-notifications-row"
+              icon={notifEnabled ? Bell : BellOff}
+              label="Daily Reminders"
+              hint="Local notifications when you skip a workout."
+              onClick={handleToggleNotifications}
+              right={<Switch on={notifEnabled} onClick={handleToggleNotifications} testId="settings-notifications-switch" />}
+            />
+            <Row
+              testId="settings-share-row"
+              icon={Share2}
+              label="Share Hero Card"
+              hint="Generate a PNG of your hero to share."
+              onClick={handleShareCard}
+            />
+          </div>
+        </div>
+
         {/* FRIENDS PREVIEW */}
         <div>
           <p className="font-pixel text-[8px] text-zinc-500 uppercase mb-2">Community</p>
@@ -255,7 +329,7 @@ const Settings = ({ gameData, onBack, onOpenFriends, onResetGame, onResetTutoria
             <div className="bg-[#18181B] border-2 border-[#3F3F46] p-3 flex items-center gap-3">
               <Info size={16} className="text-zinc-400" />
               <div className="flex-1">
-                <p className="font-pixel text-[9px] text-zinc-100">Fitness Quest</p>
+                <p className="font-pixel text-[9px] text-zinc-100">Vitalis Pact</p>
                 <p className="font-plex text-[10px] text-zinc-500 mt-0.5">Train your body. Forge your hero.</p>
               </div>
               <span className="font-pixel text-[8px] text-zinc-500">v{APP_VERSION}</span>

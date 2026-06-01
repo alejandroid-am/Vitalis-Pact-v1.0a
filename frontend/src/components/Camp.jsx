@@ -27,7 +27,7 @@ const Camp = ({ gameData, maxHP, isStiff, weeklyInfo, onLogWorkout, onUsePotion,
     <div className="bg-[#09090B] min-h-[calc(100vh-4rem)] flex flex-col">
       {/* Header */}
       <div className="bg-[#18181B] border-b-2 border-[#3F3F46] px-4 py-3 flex items-center justify-between">
-        <span className="font-pixel text-[#FF4500] text-[11px]">FITNESS QUEST</span>
+        <span className="font-pixel text-[#FF4500] text-[11px]">VITALIS PACT</span>
         <div className="flex items-center gap-2">
           <button
             data-testid="open-settings-btn"
@@ -183,9 +183,9 @@ const Camp = ({ gameData, maxHP, isStiff, weeklyInfo, onLogWorkout, onUsePotion,
           >
             <AlertTriangle size={18} className="text-red-400 flex-shrink-0" />
             <div className="flex-1">
-              <p data-testid="camp-stiffness-banner" className="font-pixel text-[9px] text-red-300 mb-0.5">STIFFNESS — ENTUMECIDO</p>
+              <p data-testid="camp-rusted-banner" className="font-pixel text-[9px] text-red-300 mb-0.5">RUSTED</p>
               <p className="font-plex text-[11px] text-red-200/80 leading-snug">
-                Inactive 48h+. Log a workout to cure the debuff.
+                Inactive 48h+. Your blade dulls — train to forge yourself back.
               </p>
             </div>
           </motion.div>

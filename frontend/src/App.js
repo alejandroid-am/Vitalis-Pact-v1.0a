@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import './App.css';
 import { useGameData } from './hooks/useGameData';
 import Onboarding from './components/Onboarding';
@@ -16,6 +16,10 @@ import DailyBoostModal from './components/DailyBoostModal';
 import TutorialOverlay from './components/TutorialOverlay';
 import { GEAR_POOL } from './data/shop';
 import { sfx, unlockAudio } from './utils/sounds';
+import { initPWA, maybeRemindToTrain } from './utils/pwa';
+import { ACHIEVEMENTS, TIERS, tierForValue } from './data/achievements';
+import { applyNarrativeVariants } from './data/narrativeVariants';
+import AchievementUnlockModal from './components/AchievementUnlockModal';
 
 const ENEMY_BUFF = 1.17;
 const TUTORIAL_KEY = 'fq_tutorial_completed';
@@ -29,7 +33,7 @@ function App() {
     addGold, buyPotion, buyGear, sellGear, equipGear, unequipGear,
     openMysteryChest, grantFreeChest, addGear, addPotion,
     recordWorkout, recordEnemyDefeat, isStiff, getDailyBoostStatus,
-    getWeeklyInfo, claimWeeklyTier, exportSave, importSave, resetTutorial, resetGame,
+    getWeeklyInfo, claimWeeklyTier, exportSave, importSave, resetTutorial, resetGame, markAchievementSeen,
   } = useGameData();
 
   const [screen, setScreen] = useState('camp');
@@ -41,6 +45,7 @@ function App() {
   const [dailyBoostOpen, setDailyBoostOpen] = useState(false);
   const [boostClaimedToast, setBoostClaimedToast] = useState(null);
   const [tutorialOpen, setTutorialOpen] = useState(false);
+  const [unlockQueue, setUnlockQueue] = useState([]);
 
   const isOnboarding = !gameData.name || !gameData.characterClass;
 
@@ -50,6 +55,38 @@ function App() {
     window.addEventListener('pointerdown', handler);
     return () => window.removeEventListener('pointerdown', handler);
   }, []);
+
+  // PWA init on mount (SW registration + install prompt capture)
+  useEffect(() => { initPWA(); }, []);
+
+  // Daily reminder check on mount
+  useEffect(() => {
+    if (isOnboarding) return;
+    maybeRemindToTrain(gameData);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOnboarding]);
+
+  // Detect achievement tier unlocks whenever gameData changes
+  useEffect(() => {
+    if (isOnboarding) return;
+    const seen = gameData.seenAchievementTiers || {};
+    const newUnlocks = [];
+    ACHIEVEMENTS.forEach((def) => {
+      const value = def.getValue(gameData);
+      const earned = tierForValue(value, def.thresholds);
+      if (!earned) return;
+      const prevTier = seen[def.id];
+      const earnedIdx = TIERS.indexOf(earned);
+      const prevIdx = prevTier ? TIERS.indexOf(prevTier) : -1;
+      if (earnedIdx > prevIdx) {
+        newUnlocks.push({ achievement: def, tier: earned });
+      }
+    });
+    if (newUnlocks.length > 0) {
+      setUnlockQueue((prev) => [...prev, ...newUnlocks]);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gameData]);
 
   // Tutorial on first launch after onboarding
   useEffect(() => {
@@ -124,19 +161,27 @@ function App() {
   };
 
   const handleAttemptMission = (mission) => {
-    if (mission.isSpecial) {
-      setActiveMission(mission);
+    // Apply random narrative variants so each attempt feels new
+    const narrated = applyNarrativeVariants(mission);
+    if (narrated.isSpecial) {
+      setActiveMission(narrated);
       return;
     }
     const buffedMission = {
-      ...mission,
+      ...narrated,
       enemy: {
-        ...mission.enemy,
-        hp: Math.ceil(mission.enemy.hp * ENEMY_BUFF),
-        attack: Math.ceil(mission.enemy.attack * ENEMY_BUFF),
+        ...narrated.enemy,
+        hp: Math.ceil(narrated.enemy.hp * ENEMY_BUFF),
+        attack: Math.ceil(narrated.enemy.attack * ENEMY_BUFF),
       },
     };
     setActiveMission(buffedMission);
+  };
+
+  const handleUnlockClose = () => {
+    const head = unlockQueue[0];
+    if (head) markAchievementSeen(head.achievement.id, head.tier);
+    setUnlockQueue((q) => q.slice(1));
   };
 
   const handleCombatVictory = (goldEarned) => {
@@ -211,6 +256,7 @@ function App() {
         {screen === 'settings' && (
           <Settings
             gameData={gameData}
+            effectiveStats={effStats}
             onBack={() => navigate(prevScreen)}
             onOpenFriends={() => navigate('friends')}
             onResetGame={() => { resetGame(); setScreen('camp'); setPrevScreen('camp'); }}
@@ -259,6 +305,9 @@ function App() {
       )}
       {tutorialOpen && (
         <TutorialOverlay onComplete={handleTutorialComplete} />
+      )}
+      {unlockQueue.length > 0 && (
+        <AchievementUnlockModal unlock={unlockQueue[0]} onClose={handleUnlockClose} />
       )}
       {boostClaimedToast && (
         <div

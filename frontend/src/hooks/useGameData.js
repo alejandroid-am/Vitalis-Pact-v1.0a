@@ -49,10 +49,12 @@ const INITIAL_STATE = {
   dailyBoost: { currentStreak: 0, lastClaimedDate: null },
   lastWorkoutAt: null,
   // V3.3 additions
-  workoutHistory: [],   // last 30 sessions: { id, date(ISO), minutes, type, xp, bonus }
+  workoutHistory: [],   // last 30 sessions
   weekly: { weekKey: null, challengeId: null,
             progress: { minutes: 0, enemiesDefeated: 0, goldEarned: 0, chestsOpened: 0, potionsDrunk: 0 },
             claimedTiers: { bronze: false, silver: false, gold: false } },
+  // V3.4 additions
+  seenAchievementTiers: {},  // { achievementId: 'bronze'|'silver'|'gold' }
 };
 
 // Sum of bonuses from equipped gear items.
@@ -122,6 +124,7 @@ export function useGameData() {
           weekly: { ...INITIAL_STATE.weekly, ...(parsed.weekly || {}),
                     progress: { ...INITIAL_STATE.weekly.progress, ...((parsed.weekly && parsed.weekly.progress) || {}) },
                     claimedTiers: { ...INITIAL_STATE.weekly.claimedTiers, ...((parsed.weekly && parsed.weekly.claimedTiers) || {}) } },
+          seenAchievementTiers: { ...INITIAL_STATE.seenAchievementTiers, ...(parsed.seenAchievementTiers || {}) },
         };
         if (typeof merged.hp !== 'number' || merged.hp <= 0) {
           merged.hp = getMaxHP(merged.stats);
@@ -699,6 +702,14 @@ export function useGameData() {
     }
   }, []);
 
+  // Mark an achievement tier as "seen" so we don't re-show the unlock modal.
+  const markAchievementSeen = useCallback((achievementId, tier) => {
+    setGameData(prev => ({
+      ...prev,
+      seenAchievementTiers: { ...prev.seenAchievementTiers, [achievementId]: tier },
+    }));
+  }, []);
+
   const resetGame = () => {
     localStorage.removeItem(STORAGE_KEY);
     localStorage.removeItem('fq_daily_workout');
@@ -760,5 +771,6 @@ export function useGameData() {
     exportSave,
     importSave,
     resetTutorial,
+    markAchievementSeen,
   };
 }

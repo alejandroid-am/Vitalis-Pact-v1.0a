@@ -7,7 +7,7 @@ const SLIDES = [
   {
     id: 'welcome',
     Icon: Flame,
-    title: 'Welcome to Fitness Quest',
+    title: 'Welcome to Vitalis Pact',
     body: 'Every real-world workout fuels your hero. Train to earn XP, level up, and unlock new zones across the wilds.',
     accent: 'text-[#FF4500]',
     border: 'border-[#FF4500]/60',
@@ -29,10 +29,10 @@ const SLIDES = [
     border: 'border-[#FF8C00]/60',
   },
   {
-    id: 'stiffness',
+    id: 'rusted',
     Icon: AlertTriangle,
-    title: 'Stiffness Debuff',
-    body: 'Skip workouts for 48+ hours and you become "Entumecido" — 30% less damage dealt, 30% more taken. Train to cure it.',
+    title: 'Rusted (Debuff)',
+    body: 'Skip workouts for 48+ hours and your hero becomes Rusted — 30% less damage dealt, 30% more taken. Train to forge yourself back.',
     accent: 'text-red-300',
     border: 'border-red-500/60',
   },

@@ -215,7 +215,7 @@ const Exploration = ({ gameData, onAttemptMission }) => {
   return (
     <div className="bg-[#09090B] min-h-[calc(100vh-4rem)] flex flex-col">
       <div className="bg-[#18181B] border-b-2 border-[#3F3F46] px-4 py-3 flex items-center justify-between">
-        <span className="font-pixel text-[#FF4500] text-[11px]">FITNESS QUEST</span>
+        <span className="font-pixel text-[#FF4500] text-[11px]">VITALIS PACT</span>
         <span className="font-pixel text-[9px] text-zinc-500">EXPLORATION</span>
       </div>
 
