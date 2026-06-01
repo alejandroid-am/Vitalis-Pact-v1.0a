@@ -117,9 +117,9 @@ const ChestRevealModal = ({ drop, onClose }) => {
   );
 };
 
-const Market = ({ gameData, onBuyPotion, onBuyGear, onOpenChest, onSellGear }) => {
+const Market = ({ gameData, initialTab = 'shop', onBuyPotion, onBuyGear, onOpenChest, onSellGear }) => {
   const { gold, potions, gear } = gameData;
-  const [tab, setTab] = useState('shop');
+  const [tab, setTab] = useState(initialTab);
   const [drop, setDrop] = useState(null);
   const [toast, setToast] = useState(null);
 

@@ -1,13 +1,20 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { GEAR_POOL } from '../data/shop';
+import { DAILY_BOOST_TARGET_MIN, getBoostReward } from '../data/achievements';
 
 const STORAGE_KEY = 'fitness_quest_v1';
+const STIFFNESS_THRESHOLD_MS = 48 * 60 * 60 * 1000;
 
-// HP scales with endurance: 10 base + 5 per END point
 export const getMaxHP = (stats) => 10 + (stats?.endurance || 1) * 5;
 
 const nowISO = () => new Date().toISOString();
 const todayKey = () => new Date().toISOString().split('T')[0];
+
+const daysBetween = (d1, d2) => {
+  const a = new Date(`${d1}T00:00:00Z`).getTime();
+  const b = new Date(`${d2}T00:00:00Z`).getTime();
+  return Math.round((b - a) / (24 * 3600 * 1000));
+};
 
 const INITIAL_STATE = {
   name: '',
@@ -17,14 +24,25 @@ const INITIAL_STATE = {
   xpMax: 100,
   sp: 0,
   stats: { strength: 1, agility: 1, endurance: 1 },
-  inventory: [],        // quest loot trophies (read-only)
-  // V3 additions
-  hp: 15,               // current HP (persisted)
+  inventory: [],
+  hp: 15,
   gold: 0,
   potions: 0,
-  gear: [],             // [{ id, name, tier, sellValue }]
-  lastRegenAt: null,    // ISO timestamp of last regen tick
-  lastDailyHealDate: null, // 'YYYY-MM-DD' of last midnight heal
+  gear: [],
+  lastRegenAt: null,
+  lastDailyHealDate: null,
+  // V3.1 additions
+  lifetime: {
+    totalMinutes: 0,
+    enemiesDefeated: 0,
+    goldEarned: 0,
+    chestsOpened: 0,
+    potionsDrunk: 0,
+    specialEventsCompleted: 0,
+  },
+  streak: { current: 0, longest: 0, lastWorkoutDate: null },
+  dailyBoost: { currentStreak: 0, lastClaimedDate: null },
+  lastWorkoutAt: null,
 };
 
 export function useGameData() {
@@ -39,8 +57,10 @@ export function useGameData() {
           stats: { ...INITIAL_STATE.stats, ...parsed.stats },
           inventory: parsed.inventory || [],
           gear: parsed.gear || [],
+          lifetime: { ...INITIAL_STATE.lifetime, ...(parsed.lifetime || {}) },
+          streak: { ...INITIAL_STATE.streak, ...(parsed.streak || {}) },
+          dailyBoost: { ...INITIAL_STATE.dailyBoost, ...(parsed.dailyBoost || {}) },
         };
-        // Migration: ensure hp set
         if (typeof merged.hp !== 'number' || merged.hp <= 0) {
           merged.hp = getMaxHP(merged.stats);
         }
@@ -80,7 +100,6 @@ export function useGameData() {
     if (gameData.sp <= 0) return false;
     setGameData(prev => {
       const newStats = { ...prev.stats, [stat]: prev.stats[stat] + 1 };
-      // If endurance upgraded, also bump current HP by the +5 gained
       const hpBonus = stat === 'endurance' ? 5 : 0;
       return {
         ...prev,
@@ -92,7 +111,7 @@ export function useGameData() {
     return true;
   };
 
-  // ─── QUEST LOOT (trophies) ─────────────────────────────
+  // ─── QUEST LOOT (relics) ───────────────────────────────
   const addToInventory = (item, missionName) => {
     const entry = {
       item,
@@ -106,7 +125,6 @@ export function useGameData() {
   };
 
   // ─── HP & RECOVERY ─────────────────────────────────────
-  // Damage and heal helpers update gameData immediately.
   const damagePlayer = useCallback((amount) => {
     setGameData(prev => ({
       ...prev,
@@ -134,19 +152,19 @@ export function useGameData() {
     setGameData(prev => {
       if (prev.potions <= 0) return prev;
       const max = getMaxHP(prev.stats);
-      if (prev.hp >= max) return prev; // already full
+      if (prev.hp >= max) return prev;
       const healAmt = Math.ceil(max * 0.3);
       ok = true;
       return {
         ...prev,
         potions: prev.potions - 1,
         hp: Math.min(max, prev.hp + healAmt),
+        lifetime: { ...prev.lifetime, potionsDrunk: (prev.lifetime?.potionsDrunk || 0) + 1 },
       };
     });
     return ok;
   }, []);
 
-  // Apply passive regen + midnight full heal. Idempotent on call.
   const applyRecovery = useCallback(() => {
     setGameData(prev => {
       const max = getMaxHP(prev.stats);
@@ -154,14 +172,12 @@ export function useGameData() {
       const today = todayKey();
       let changed = false;
 
-      // Daily midnight heal — if we crossed into a new day since last heal
       if (lastDailyHealDate !== today) {
         hp = max;
         lastDailyHealDate = today;
         changed = true;
       }
 
-      // Passive regen at 10% max per hour, only if not full
       if (hp < max && lastRegenAt) {
         const elapsedMs = Date.now() - new Date(lastRegenAt).getTime();
         const hours = elapsedMs / (1000 * 60 * 60);
@@ -184,7 +200,11 @@ export function useGameData() {
 
   // ─── ECONOMY ────────────────────────────────────────────
   const addGold = useCallback((amount) => {
-    setGameData(prev => ({ ...prev, gold: prev.gold + amount }));
+    setGameData(prev => ({
+      ...prev,
+      gold: prev.gold + amount,
+      lifetime: { ...prev.lifetime, goldEarned: (prev.lifetime?.goldEarned || 0) + Math.max(0, amount) },
+    }));
   }, []);
 
   const spendGold = useCallback((amount) => {
@@ -222,7 +242,6 @@ export function useGameData() {
     });
   }, []);
 
-  // ─── SHOP PURCHASES ─────────────────────────────────────
   const buyPotion = useCallback((price = 25) => {
     let result = { ok: false, reason: 'gold' };
     setGameData(prev => {
@@ -254,7 +273,6 @@ export function useGameData() {
   }, []);
 
   // ─── MYSTERY CHEST (Gacha) ─────────────────────────────
-  // Returns { ok, drop: { kind: 'potion'|'common'|'epic'|'legendary', item } }
   const openMysteryChest = useCallback((price = 100) => {
     let result = { ok: false, reason: 'gold', drop: null };
 
@@ -270,23 +288,19 @@ export function useGameData() {
       } else if (roll < 90) {
         kind = 'common';
         const pool = GEAR_POOL.common;
-        const pick = pool[Math.floor(Math.random() * pool.length)];
-        dropEntry = { kind, ...pick };
+        dropEntry = { kind, ...pool[Math.floor(Math.random() * pool.length)] };
       } else if (roll < 99) {
         kind = 'epic';
         const pool = GEAR_POOL.epic;
-        const pick = pool[Math.floor(Math.random() * pool.length)];
-        dropEntry = { kind, ...pick };
+        dropEntry = { kind, ...pool[Math.floor(Math.random() * pool.length)] };
       } else {
         kind = 'legendary';
         const pool = GEAR_POOL.legendary;
-        const pick = pool[Math.floor(Math.random() * pool.length)];
-        dropEntry = { kind, ...pick };
+        dropEntry = { kind, ...pool[Math.floor(Math.random() * pool.length)] };
       }
 
       result = { ok: true, drop: dropEntry };
 
-      // Apply effects
       let newPotions = prev.potions;
       let newGear = prev.gear;
       if (kind === 'potion') {
@@ -307,6 +321,40 @@ export function useGameData() {
         gold: prev.gold - price,
         potions: newPotions,
         gear: newGear,
+        lifetime: { ...prev.lifetime, chestsOpened: (prev.lifetime?.chestsOpened || 0) + 1 },
+      };
+    });
+
+    return result;
+  }, []);
+
+  // Grant a free Mystery Chest open (for Daily Boost day 7 reward)
+  const grantFreeChest = useCallback(() => {
+    let result = { drop: null };
+
+    setGameData(prev => {
+      const roll = Math.random() * 100;
+      let kind, dropEntry;
+      if (roll < 60) { kind = 'potion'; dropEntry = { kind, name: 'Health Potion' }; }
+      else if (roll < 90) { kind = 'common'; const p = GEAR_POOL.common; dropEntry = { kind, ...p[Math.floor(Math.random() * p.length)] }; }
+      else if (roll < 99) { kind = 'epic'; const p = GEAR_POOL.epic; dropEntry = { kind, ...p[Math.floor(Math.random() * p.length)] }; }
+      else { kind = 'legendary'; const p = GEAR_POOL.legendary; dropEntry = { kind, ...p[Math.floor(Math.random() * p.length)] }; }
+
+      result.drop = dropEntry;
+
+      let newPotions = prev.potions;
+      let newGear = prev.gear;
+      if (kind === 'potion') newPotions += 1;
+      else {
+        const entry = { id: `${Date.now()}_${Math.random().toString(36).slice(2, 7)}`, name: dropEntry.name, tier: dropEntry.tier, sellValue: dropEntry.sellValue };
+        newGear = [entry, ...newGear].slice(0, 60);
+      }
+
+      return {
+        ...prev,
+        potions: newPotions,
+        gear: newGear,
+        lifetime: { ...prev.lifetime, chestsOpened: (prev.lifetime?.chestsOpened || 0) + 1 },
       };
     });
 
@@ -329,13 +377,109 @@ export function useGameData() {
     localStorage.setItem('fq_daily_workout', JSON.stringify({ date: today, totalMinutes: total }));
   };
 
+  // ─── LIFETIME / STREAK / WORKOUT ────────────────────────
+  // Called on every successful workout submit. Updates streak, lifetime minutes,
+  // lastWorkoutAt (for stiffness), and returns whether the daily boost should be claimed now.
+  const recordWorkout = useCallback((minutes) => {
+    let boostClaim = null;
+    setGameData(prev => {
+      const today = todayKey();
+      const last = prev.streak?.lastWorkoutDate;
+      let current = prev.streak?.current || 0;
+      let longest = prev.streak?.longest || 0;
+
+      if (last === today) {
+        // already counted today — keep streak as-is
+      } else if (!last) {
+        current = 1;
+      } else {
+        const gap = daysBetween(last, today);
+        current = gap === 1 ? current + 1 : 1;
+      }
+      if (current > longest) longest = current;
+
+      // Daily boost logic
+      const todayMins = (() => {
+        try {
+          const d = JSON.parse(localStorage.getItem('fq_daily_workout') || '{}');
+          return d.date === today ? (d.totalMinutes || 0) : 0;
+        } catch { return 0; }
+      })();
+
+      let newBoost = prev.dailyBoost || { currentStreak: 0, lastClaimedDate: null };
+      if (todayMins >= DAILY_BOOST_TARGET_MIN && newBoost.lastClaimedDate !== today) {
+        // Determine new boost streak day
+        let boostStreak;
+        if (!newBoost.lastClaimedDate) boostStreak = 1;
+        else {
+          const gap = daysBetween(newBoost.lastClaimedDate, today);
+          boostStreak = gap === 1 ? newBoost.currentStreak + 1 : 1;
+        }
+        const reward = getBoostReward(boostStreak);
+        boostClaim = { day: boostStreak, ...reward };
+        newBoost = { currentStreak: boostStreak, lastClaimedDate: today };
+      }
+
+      return {
+        ...prev,
+        lastWorkoutAt: nowISO(),
+        streak: { current, longest, lastWorkoutDate: today },
+        lifetime: { ...prev.lifetime, totalMinutes: (prev.lifetime?.totalMinutes || 0) + Math.max(0, minutes) },
+        dailyBoost: newBoost,
+      };
+    });
+    return boostClaim;
+  }, []);
+
+  // ─── COMBAT TRACKING ────────────────────────────────────
+  const recordEnemyDefeat = useCallback(({ isSpecial = false } = {}) => {
+    setGameData(prev => ({
+      ...prev,
+      lifetime: {
+        ...prev.lifetime,
+        enemiesDefeated: (prev.lifetime?.enemiesDefeated || 0) + 1,
+        specialEventsCompleted: (prev.lifetime?.specialEventsCompleted || 0) + (isSpecial ? 1 : 0),
+      },
+    }));
+  }, []);
+
+  // ─── STIFFNESS ──────────────────────────────────────────
+  const isStiff = useCallback(() => {
+    if (!gameData.lastWorkoutAt) return false;
+    return (Date.now() - new Date(gameData.lastWorkoutAt).getTime()) > STIFFNESS_THRESHOLD_MS;
+  }, [gameData.lastWorkoutAt]);
+
+  // ─── DAILY BOOST helpers ────────────────────────────────
+  // Returns info for popup: { available, streakDay, target }
+  const getDailyBoostStatus = useCallback(() => {
+    const today = todayKey();
+    const last = gameData.dailyBoost?.lastClaimedDate;
+    const claimed = last === today;
+    // Predicted streak day if user trains today
+    let nextDay;
+    if (!last) nextDay = 1;
+    else {
+      const gap = daysBetween(last, today);
+      nextDay = gap === 1 ? (gameData.dailyBoost.currentStreak + 1) : 1;
+    }
+    const reward = getBoostReward(claimed ? gameData.dailyBoost.currentStreak : nextDay);
+    return {
+      available: !claimed,
+      claimed,
+      nextDay: claimed ? gameData.dailyBoost.currentStreak : nextDay,
+      target: DAILY_BOOST_TARGET_MIN,
+      todayMinutes: getDailyMinutes(),
+      reward,
+    };
+  }, [gameData.dailyBoost]);
+
   const resetGame = () => {
     localStorage.removeItem(STORAGE_KEY);
     localStorage.removeItem('fq_daily_workout');
     setGameData({ ...INITIAL_STATE });
   };
 
-  // ─── Auto recovery on mount + every minute ─────────────
+  // Auto recovery on mount + every minute
   const recoveryTimerRef = useRef(null);
   useEffect(() => {
     applyRecovery();
@@ -352,7 +496,6 @@ export function useGameData() {
     resetGame,
     getDailyMinutes,
     recordDailyMinutes,
-    // V3
     getMaxHP: () => getMaxHP(gameData.stats),
     damagePlayer,
     healPlayer,
@@ -366,6 +509,11 @@ export function useGameData() {
     buyPotion,
     buyGear,
     openMysteryChest,
+    grantFreeChest,
     applyRecovery,
+    recordWorkout,
+    recordEnemyDefeat,
+    isStiff,
+    getDailyBoostStatus,
   };
 }

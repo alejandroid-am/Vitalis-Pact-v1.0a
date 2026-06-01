@@ -32,16 +32,20 @@ const HPBar = ({ current, max, color = 'from-red-600 to-orange-500' }) => {
 };
 
 const CombatModal = ({
-  mission, gameData, maxHP,
+  mission, gameData, maxHP, isStiff,
   onPlayerDamage, onSyncHP, onUsePotion,
   onVictory, onDefeat, onClose,
 }) => {
   const { stats, name, hp: persistedHP, potions } = gameData;
   const { enemy } = mission;
 
-  // Player combat stats (HP comes from persistent gameData.hp; max from prop)
+  const stiff = !!isStiff;
+  const STIFF_OUT = stiff ? 0.7 : 1; // damage dealt multiplier
+  const STIFF_IN  = stiff ? 1.3 : 1; // damage taken multiplier
+
+  // Player combat stats (HP from persistent state; max from prop)
   const playerMaxHP = maxHP;
-  const playerAttack = stats.strength * 2;
+  const playerAttack = Math.max(1, Math.round(stats.strength * 2 * STIFF_OUT));
   const playerDodgePct = Math.min(stats.agility * 10, 60);
 
   const tierColors = TIER_COLORS[enemy.tier] || TIER_COLORS.I;
@@ -86,7 +90,12 @@ const CombatModal = ({
 
     if (newEnemyHP <= 0) {
       // Calculate gold drop
-      const range = GOLD_DROPS[enemy.tier] || GOLD_DROPS.I;
+      let range;
+      if (mission.isSpecial && mission.rewardGold) {
+        range = mission.rewardGold;
+      } else {
+        range = GOLD_DROPS[enemy.tier] || GOLD_DROPS.I;
+      }
       const gold = range.min + Math.floor(Math.random() * (range.max - range.min + 1));
       setGoldEarned(gold);
       pushLog(`>>> ENEMY DEFEATED! +${gold}G`, 'system');
@@ -97,7 +106,7 @@ const CombatModal = ({
     // Enemy counter-attacks after delay
     setTimeout(() => {
       const playerEvades = Math.random() * 100 < playerDodgePct;
-      const eDmg = Math.max(1, enemy.attack + Math.floor(Math.random() * 2));
+      const eDmg = Math.max(1, Math.round((enemy.attack + Math.floor(Math.random() * 2)) * STIFF_IN));
 
       if (playerEvades) {
         pushLog(`You dodge ${enemy.name}'s counter!`, 'player');
@@ -129,7 +138,7 @@ const CombatModal = ({
       setBusy(true);
       setTimeout(() => {
         const playerEvades = Math.random() * 100 < playerDodgePct;
-        const eDmg = Math.max(1, enemy.attack + Math.floor(Math.random() * 2));
+        const eDmg = Math.max(1, Math.round((enemy.attack + Math.floor(Math.random() * 2)) * STIFF_IN));
         if (playerEvades) {
           pushLog(`You dodge while drinking!`, 'player');
           setBusy(false);
@@ -192,6 +201,16 @@ const CombatModal = ({
 
           <div className="p-4">
             <p className="font-pixel text-[9px] text-[#FF4500] mb-1">{mission.name}</p>
+            {mission.isSpecial && (
+              <span className="font-pixel text-[7px] text-purple-300 border border-purple-400/60 bg-purple-500/15 px-1.5 py-0.5 inline-block mb-2">
+                ⚡ SPECIAL EVENT · +20% SCALING
+              </span>
+            )}
+            {stiff && (
+              <div className="bg-red-950/40 border border-red-500/50 px-2 py-1.5 mb-2">
+                <p className="font-pixel text-[8px] text-red-300">⚠ STIFFNESS ACTIVE — -30% ATK · +30% TAKEN</p>
+              </div>
+            )}
 
             {/* Enemy vs Player */}
             <div className="grid grid-cols-2 gap-3 my-4">

@@ -1,8 +1,9 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Dumbbell, Zap, Heart, Plus, Package, Coins, FlaskConical, Sword } from 'lucide-react';
+import { Dumbbell, Zap, Heart, Plus, Package, Coins, FlaskConical, Sword, Backpack, AlertTriangle } from 'lucide-react';
 import { STAT_LABELS } from '../data/missions';
 import { TIER_STYLES } from '../data/shop';
+import AchievementsPanel from './AchievementsPanel';
 
 const STAT_INFO = [
   { key: 'strength', Icon: Dumbbell, color: 'text-orange-400', desc: 'Raw power. Required for heavy combat missions.' },
@@ -58,12 +59,33 @@ const HPRow = ({ hp, maxHP, potions, onUsePotion }) => {
   );
 };
 
-const Hero = ({ gameData, maxHP, onUpgradeStat, onUsePotion }) => {
-  const { name, characterClass, level, sp, stats, inventory, hp, gold, gear } = gameData;
+const StiffnessBanner = () => (
+  <motion.div
+    initial={{ opacity: 0, y: -8 }}
+    animate={{ opacity: 1, y: 0 }}
+    className="bg-red-950/50 border-2 border-red-500/60 p-3 flex items-center gap-3 relative overflow-hidden"
+  >
+    <motion.div
+      animate={{ opacity: [0.4, 1, 0.4] }}
+      transition={{ duration: 1.6, repeat: Infinity }}
+      className="absolute inset-0 bg-red-500/5 pointer-events-none"
+    />
+    <AlertTriangle size={20} className="text-red-400 flex-shrink-0 relative" />
+    <div className="relative flex-1">
+      <p data-testid="stiffness-banner" className="font-pixel text-[10px] text-red-300 mb-0.5">STIFFNESS — ENTUMECIDO</p>
+      <p className="font-plex text-[11px] text-red-200/80 leading-snug">
+        Inactive for 48h+. <span className="text-red-300">-30% damage</span>, <span className="text-red-300">+30% taken</span>. Train to cure.
+      </p>
+    </div>
+  </motion.div>
+);
+
+const Hero = ({ gameData, maxHP, isStiff, onUpgradeStat, onUsePotion, onOpenBag }) => {
+  const { name, characterClass, level, sp, stats, inventory, hp, gold, gear, streak } = gameData;
+  const stiff = isStiff?.();
 
   return (
     <div className="bg-[#09090B] min-h-[calc(100vh-4rem)] flex flex-col">
-      {/* Header */}
       <div className="bg-[#18181B] border-b-2 border-[#3F3F46] px-4 py-3 flex items-center justify-between">
         <span className="font-pixel text-[#FF4500] text-[11px]">FITNESS QUEST</span>
         <div className="flex items-center gap-2">
@@ -82,6 +104,9 @@ const Hero = ({ gameData, maxHP, onUpgradeStat, onUsePotion }) => {
             <p className="font-pixel text-[8px] text-zinc-500 mb-1">{characterClass === 'warrior' ? 'WARRIOR' : 'ROGUE'}</p>
             <p className="font-pixel text-sm text-zinc-100">{name}</p>
             <p className="font-pixel text-[9px] text-zinc-400 mt-1">Level {level}</p>
+            {streak?.current > 0 && (
+              <p data-testid="streak-display" className="font-pixel text-[8px] text-[#FF8C00] mt-1">🔥 {streak.current}-day streak</p>
+            )}
           </div>
           <div className="text-right">
             <p className="font-pixel text-[8px] text-zinc-500 mb-0.5">SKILL PTS</p>
@@ -94,8 +119,27 @@ const Hero = ({ gameData, maxHP, onUpgradeStat, onUsePotion }) => {
           </div>
         </div>
 
+        {/* Stiffness Banner */}
+        {stiff && <StiffnessBanner />}
+
         {/* HP bar + potion */}
         <HPRow hp={hp} maxHP={maxHP} potions={gameData.potions} onUsePotion={onUsePotion} />
+
+        {/* OPEN BAG shortcut */}
+        <button
+          data-testid="open-bag-btn"
+          onClick={onOpenBag}
+          className="w-full bg-[#18181B] hover:bg-[#27272A] border-2 border-[#FF8C00]/40 hover:border-[#FF8C00] p-3 flex items-center justify-between transition-all active:translate-y-[1px]"
+        >
+          <div className="flex items-center gap-3">
+            <Backpack size={18} className="text-[#FF8C00]" />
+            <div className="text-left">
+              <p className="font-pixel text-[10px] text-zinc-200">OPEN BAG</p>
+              <p className="font-plex text-[10px] text-zinc-500">{gameData.potions} potions · {gear.length} gear</p>
+            </div>
+          </div>
+          <span className="font-pixel text-[9px] text-[#FF8C00]">→</span>
+        </button>
 
         {/* SP instructions */}
         {sp > 0 && (
@@ -152,42 +196,23 @@ const Hero = ({ gameData, maxHP, onUpgradeStat, onUsePotion }) => {
           </div>
         </div>
 
-        {/* Gear (shop/chest items) */}
-        {gear && gear.length > 0 && (
-          <div>
-            <div className="flex items-center gap-2 mb-3">
-              <Sword size={14} className="text-zinc-400" />
-              <p className="font-pixel text-[9px] text-zinc-400 uppercase">Gear</p>
-              <span className="font-pixel text-[8px] text-zinc-600">({gear.length})</span>
-            </div>
-            <div className="grid grid-cols-2 gap-2">
-              {gear.slice(0, 6).map((g) => {
-                const t = TIER_STYLES[g.tier] || TIER_STYLES.I;
-                return (
-                  <div key={g.id} className={`bg-[#18181B] border-2 ${t.border} p-2.5`}>
-                    <p className={`font-pixel text-[8px] ${t.text} leading-tight mb-1 truncate`}>{g.name}</p>
-                    <p className="font-pixel text-[7px] text-zinc-500">{t.label}</p>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
+        {/* Achievements */}
+        <AchievementsPanel gameData={gameData} />
 
-        {/* Quest Trophies */}
+        {/* Quest Relics (former trophies) */}
         <div>
           <div className="flex items-center gap-2 mb-3">
             <Package size={14} className="text-zinc-400" />
-            <p className="font-pixel text-[9px] text-zinc-400 uppercase">Trophies</p>
+            <p className="font-pixel text-[9px] text-zinc-400 uppercase">Quest Relics</p>
             <span className="font-pixel text-[8px] text-zinc-600">({inventory.length})</span>
           </div>
           {inventory.length === 0 ? (
             <div className="bg-[#18181B] border-2 border-[#3F3F46] border-dashed p-6 text-center">
               <p className="font-pixel text-[9px] text-zinc-600 leading-relaxed">
-                No loot yet.
+                No relics yet.
               </p>
               <p className="font-plex text-xs text-zinc-600 mt-2">
-                Complete missions to collect trophies.
+                Complete missions to collect rare relics.
               </p>
             </div>
           ) : (
@@ -206,6 +231,31 @@ const Hero = ({ gameData, maxHP, onUpgradeStat, onUsePotion }) => {
             </div>
           )}
         </div>
+
+        {/* Gear quick view (shop/chest items) */}
+        {gear && gear.length > 0 && (
+          <div>
+            <div className="flex items-center gap-2 mb-3">
+              <Sword size={14} className="text-zinc-400" />
+              <p className="font-pixel text-[9px] text-zinc-400 uppercase">Gear preview</p>
+              <span className="font-pixel text-[8px] text-zinc-600">({gear.length})</span>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              {gear.slice(0, 6).map((g) => {
+                const t = TIER_STYLES[g.tier] || TIER_STYLES.I;
+                return (
+                  <div key={g.id} className={`bg-[#18181B] border-2 ${t.border} p-2.5`}>
+                    <p className={`font-pixel text-[8px] ${t.text} leading-tight mb-1 truncate`}>{g.name}</p>
+                    <p className="font-pixel text-[7px] text-zinc-500">{t.label}</p>
+                  </div>
+                );
+              })}
+            </div>
+            {gear.length > 6 && (
+              <p className="text-center font-pixel text-[8px] text-zinc-500 mt-2">+{gear.length - 6} more in Bag</p>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Dumbbell, Zap, Heart, Flame, Coins, FlaskConical } from 'lucide-react';
+import { Dumbbell, Zap, Heart, Flame, Coins, FlaskConical, AlertTriangle } from 'lucide-react';
 
 const CAMP_BG = 'https://static.prod-images.emergentagent.com/jobs/ce456438-b97a-4a6a-aa70-aab136e72d1b/images/27ecd094631a8ac3ef331a753831926074b8c643e49113267ee8a55178495503.png';
 const WARRIOR_IMG = 'https://static.prod-images.emergentagent.com/jobs/ce456438-b97a-4a6a-aa70-aab136e72d1b/images/5ef76335b71bf68581dd0a74141fd29a97909f764e61788554de80b839d907b6.png';
@@ -12,7 +12,7 @@ const STAT_INFO = [
   { key: 'endurance', label: 'END', Icon: Heart },
 ];
 
-const Camp = ({ gameData, maxHP, onLogWorkout, onUsePotion }) => {
+const Camp = ({ gameData, maxHP, isStiff, onLogWorkout, onUsePotion }) => {
   const { name, characterClass, level, xp, xpMax, sp, stats, hp, gold, potions } = gameData;
   const xpPercent = Math.min(100, Math.round((xp / xpMax) * 100));
   const hpPercent = Math.min(100, Math.round((hp / maxHP) * 100));
@@ -163,6 +163,23 @@ const Camp = ({ gameData, maxHP, onLogWorkout, onUsePotion }) => {
             {classBonus}
           </p>
         </div>
+
+        {/* Stiffness banner */}
+        {isStiff && (
+          <motion.div
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-red-950/50 border-2 border-red-500/60 p-3 flex items-center gap-3"
+          >
+            <AlertTriangle size={18} className="text-red-400 flex-shrink-0" />
+            <div className="flex-1">
+              <p data-testid="camp-stiffness-banner" className="font-pixel text-[9px] text-red-300 mb-0.5">STIFFNESS — ENTUMECIDO</p>
+              <p className="font-plex text-[11px] text-red-200/80 leading-snug">
+                Inactive 48h+. Log a workout to cure the debuff.
+              </p>
+            </div>
+          </motion.div>
+        )}
       </div>
 
       {/* Log Workout Button */}
