@@ -107,14 +107,14 @@ const ZoneCard = ({ zone, stats, onAttempt }) => {
 
 const Exploration = ({ gameData, onAttemptMission }) => {
   return (
-    <div className="bg-[#09090B] min-h-screen flex flex-col">
+    <div className="bg-[#09090B] min-h-[calc(100vh-4rem)] flex flex-col">
       {/* Header */}
       <div className="bg-[#18181B] border-b-2 border-[#3F3F46] px-4 py-3 flex items-center justify-between">
         <span className="font-pixel text-[#FF4500] text-[11px]">FITNESS QUEST</span>
         <span className="font-pixel text-[9px] text-zinc-500">EXPLORATION</span>
       </div>
 
-      <div className="flex-1 p-4 space-y-4 overflow-y-auto">
+      <div className="flex-1 p-4 space-y-4 overflow-y-auto pb-4">
         {/* Instructions */}
         <div className="bg-[#18181B] border-2 border-[#3F3F46] p-3">
           <p className="font-pixel text-[9px] text-zinc-300 leading-loose">

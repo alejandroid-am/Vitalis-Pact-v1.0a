@@ -8,7 +8,7 @@ const NAV_ITEMS = [
 ];
 
 const BottomNav = ({ screen, onNavigate }) => (
-  <nav className="fixed bottom-0 w-full max-w-md left-1/2 -translate-x-1/2 bg-[#18181B] border-t-2 border-[#3F3F46] flex justify-around items-stretch h-16 z-50">
+  <nav className="fixed bottom-0 w-full max-w-md left-1/2 -translate-x-1/2 bg-[#18181B] border-t-2 border-[#3F3F46] flex justify-around items-stretch h-16 z-[10000]">
     {NAV_ITEMS.map(({ id, label, Icon }) => {
       const active = screen === id;
       return (
