@@ -1,9 +1,10 @@
 import React from 'react';
-import { Tent, Shield, Map } from 'lucide-react';
+import { Tent, Shield, Map, Store } from 'lucide-react';
 
 const NAV_ITEMS = [
   { id: 'camp', label: 'CAMP', Icon: Tent },
   { id: 'hero', label: 'HERO', Icon: Shield },
+  { id: 'market', label: 'MARKET', Icon: Store },
   { id: 'exploration', label: 'EXPLORE', Icon: Map },
 ];
 

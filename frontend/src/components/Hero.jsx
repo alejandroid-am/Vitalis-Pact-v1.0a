@@ -1,23 +1,78 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Dumbbell, Zap, Heart, Plus, Package } from 'lucide-react';
+import { Dumbbell, Zap, Heart, Plus, Package, Coins, FlaskConical, Sword } from 'lucide-react';
 import { STAT_LABELS } from '../data/missions';
+import { TIER_STYLES } from '../data/shop';
 
 const STAT_INFO = [
   { key: 'strength', Icon: Dumbbell, color: 'text-orange-400', desc: 'Raw power. Required for heavy combat missions.' },
   { key: 'agility', Icon: Zap, color: 'text-yellow-400', desc: 'Speed and precision. Required for swift missions.' },
-  { key: 'endurance', Icon: Heart, color: 'text-red-400', desc: 'Stamina and resilience. Required for grueling missions.' },
+  { key: 'endurance', Icon: Heart, color: 'text-red-400', desc: 'Stamina and resilience. Boosts max HP.' },
 ];
 
-const Hero = ({ gameData, onUpgradeStat }) => {
-  const { name, characterClass, level, sp, stats, inventory } = gameData;
+const HPRow = ({ hp, maxHP, potions, onUsePotion }) => {
+  const pct = Math.max(0, Math.min(100, (hp / maxHP) * 100));
+  const low = hp < maxHP * 0.4;
+  const canDrink = potions > 0 && hp < maxHP;
+
+  return (
+    <div className="bg-[#18181B] border-2 border-[#3F3F46] p-3">
+      <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center gap-1.5">
+          <Heart size={12} className={low ? 'text-red-400' : 'text-green-400'} />
+          <span className="font-pixel text-[9px] text-zinc-300">HEALTH</span>
+        </div>
+        <span data-testid="hp-display" className={`font-pixel text-[10px] ${low ? 'text-red-400' : 'text-green-400'}`}>
+          {hp}/{maxHP}
+        </span>
+      </div>
+      <div className="h-5 bg-[#09090B] border-2 border-[#3F3F46] w-full overflow-hidden relative">
+        <motion.div
+          animate={{ width: `${pct}%` }}
+          transition={{ duration: 0.5 }}
+          className={`h-full bg-gradient-to-r ${low ? 'from-red-800 to-red-500' : 'from-green-800 to-green-400'}`}
+        />
+        <span className="absolute inset-0 flex items-center justify-center font-pixel text-[8px] text-white/90">
+          {Math.round(pct)}%
+        </span>
+      </div>
+      <div className="flex items-center justify-between mt-2 gap-2">
+        <p className="font-plex text-[10px] text-zinc-500 flex-1">
+          Regen 10%/hr · Full heal at midnight.
+        </p>
+        <button
+          data-testid="use-potion-btn"
+          onClick={onUsePotion}
+          disabled={!canDrink}
+          className={`font-pixel text-[8px] px-2.5 py-1.5 border-2 transition-all flex items-center gap-1 ${
+            canDrink
+              ? 'bg-emerald-700 hover:bg-emerald-600 border-emerald-500 text-white active:translate-y-[1px]'
+              : 'bg-[#27272A] border-[#3F3F46] text-zinc-600 cursor-not-allowed'
+          }`}
+        >
+          <FlaskConical size={10} />
+          POTION x{potions}
+        </button>
+      </div>
+    </div>
+  );
+};
+
+const Hero = ({ gameData, maxHP, onUpgradeStat, onUsePotion }) => {
+  const { name, characterClass, level, sp, stats, inventory, hp, gold, gear } = gameData;
 
   return (
     <div className="bg-[#09090B] min-h-[calc(100vh-4rem)] flex flex-col">
       {/* Header */}
       <div className="bg-[#18181B] border-b-2 border-[#3F3F46] px-4 py-3 flex items-center justify-between">
         <span className="font-pixel text-[#FF4500] text-[11px]">FITNESS QUEST</span>
-        <span className="font-pixel text-[9px] text-zinc-500">THE HERO</span>
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1 bg-[#27272A] border-2 border-[#FF8C00]/50 px-2 py-1">
+            <Coins size={10} className="text-[#FF8C00]" />
+            <span data-testid="hero-gold-display" className="font-pixel text-[9px] text-[#FF8C00]">{gold}G</span>
+          </div>
+          <span className="font-pixel text-[9px] text-zinc-500">THE HERO</span>
+        </div>
       </div>
 
       <div className="flex-1 p-4 space-y-4 overflow-y-auto pb-4">
@@ -38,6 +93,9 @@ const Hero = ({ gameData, onUpgradeStat }) => {
             </p>
           </div>
         </div>
+
+        {/* HP bar + potion */}
+        <HPRow hp={hp} maxHP={maxHP} potions={gameData.potions} onUsePotion={onUsePotion} />
 
         {/* SP instructions */}
         {sp > 0 && (
@@ -94,11 +152,33 @@ const Hero = ({ gameData, onUpgradeStat }) => {
           </div>
         </div>
 
-        {/* Inventory */}
+        {/* Gear (shop/chest items) */}
+        {gear && gear.length > 0 && (
+          <div>
+            <div className="flex items-center gap-2 mb-3">
+              <Sword size={14} className="text-zinc-400" />
+              <p className="font-pixel text-[9px] text-zinc-400 uppercase">Gear</p>
+              <span className="font-pixel text-[8px] text-zinc-600">({gear.length})</span>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              {gear.slice(0, 6).map((g) => {
+                const t = TIER_STYLES[g.tier] || TIER_STYLES.I;
+                return (
+                  <div key={g.id} className={`bg-[#18181B] border-2 ${t.border} p-2.5`}>
+                    <p className={`font-pixel text-[8px] ${t.text} leading-tight mb-1 truncate`}>{g.name}</p>
+                    <p className="font-pixel text-[7px] text-zinc-500">{t.label}</p>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Quest Trophies */}
         <div>
           <div className="flex items-center gap-2 mb-3">
             <Package size={14} className="text-zinc-400" />
-            <p className="font-pixel text-[9px] text-zinc-400 uppercase">Inventory</p>
+            <p className="font-pixel text-[9px] text-zinc-400 uppercase">Trophies</p>
             <span className="font-pixel text-[8px] text-zinc-600">({inventory.length})</span>
           </div>
           {inventory.length === 0 ? (
@@ -107,7 +187,7 @@ const Hero = ({ gameData, onUpgradeStat }) => {
                 No loot yet.
               </p>
               <p className="font-plex text-xs text-zinc-600 mt-2">
-                Complete missions to collect items.
+                Complete missions to collect trophies.
               </p>
             </div>
           ) : (

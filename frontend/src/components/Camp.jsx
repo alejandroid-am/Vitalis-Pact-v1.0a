@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Dumbbell, Zap, Heart, Flame } from 'lucide-react';
+import { Dumbbell, Zap, Heart, Flame, Coins, FlaskConical } from 'lucide-react';
 
 const CAMP_BG = 'https://static.prod-images.emergentagent.com/jobs/ce456438-b97a-4a6a-aa70-aab136e72d1b/images/27ecd094631a8ac3ef331a753831926074b8c643e49113267ee8a55178495503.png';
 const WARRIOR_IMG = 'https://static.prod-images.emergentagent.com/jobs/ce456438-b97a-4a6a-aa70-aab136e72d1b/images/5ef76335b71bf68581dd0a74141fd29a97909f764e61788554de80b839d907b6.png';
@@ -12,9 +12,11 @@ const STAT_INFO = [
   { key: 'endurance', label: 'END', Icon: Heart },
 ];
 
-const Camp = ({ gameData, onLogWorkout }) => {
-  const { name, characterClass, level, xp, xpMax, sp, stats } = gameData;
+const Camp = ({ gameData, maxHP, onLogWorkout, onUsePotion }) => {
+  const { name, characterClass, level, xp, xpMax, sp, stats, hp, gold, potions } = gameData;
   const xpPercent = Math.min(100, Math.round((xp / xpMax) * 100));
+  const hpPercent = Math.min(100, Math.round((hp / maxHP) * 100));
+  const hpLow = hp < maxHP * 0.4;
   const classImg = characterClass === 'warrior' ? WARRIOR_IMG : ROGUE_IMG;
   const classLabel = characterClass === 'warrior' ? 'WARRIOR' : 'ROGUE';
   const classBonus = characterClass === 'warrior' ? '+20% XP on Strength Training' : '+20% XP on Cardio';
@@ -25,6 +27,10 @@ const Camp = ({ gameData, onLogWorkout }) => {
       <div className="bg-[#18181B] border-b-2 border-[#3F3F46] px-4 py-3 flex items-center justify-between">
         <span className="font-pixel text-[#FF4500] text-[11px]">FITNESS QUEST</span>
         <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1 bg-[#27272A] border-2 border-[#FF8C00]/50 px-2 py-1">
+            <Coins size={10} className="text-[#FF8C00]" />
+            <span data-testid="camp-gold-display" className="font-pixel text-[9px] text-[#FF8C00]">{gold}G</span>
+          </div>
           {sp > 0 && (
             <span className="font-pixel text-[8px] text-[#FF4500] animate-pulse-glow border border-[#FF4500]/50 px-2 py-1">
               {sp} SP
@@ -85,6 +91,45 @@ const Camp = ({ gameData, onLogWorkout }) => {
                 />
                 <span className="absolute inset-0 flex items-center justify-center font-pixel text-[8px] text-white/90">
                   {xpPercent}%
+                </span>
+              </div>
+            </div>
+
+            {/* HP Bar */}
+            <div className="mt-3">
+              <div className="flex justify-between mb-1.5">
+                <div className="flex items-center gap-1">
+                  <Heart size={10} className={hpLow ? 'text-red-400' : 'text-green-400'} />
+                  <span className="font-pixel text-[8px] text-zinc-400">HP</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    data-testid="camp-use-potion-btn"
+                    onClick={onUsePotion}
+                    disabled={potions <= 0 || hp >= maxHP}
+                    className={`font-pixel text-[7px] px-1.5 py-0.5 border transition-all flex items-center gap-1 ${
+                      potions > 0 && hp < maxHP
+                        ? 'border-emerald-500/60 text-emerald-300 hover:bg-emerald-500/10 active:translate-y-[1px]'
+                        : 'border-[#3F3F46] text-zinc-600 cursor-not-allowed'
+                    }`}
+                  >
+                    <FlaskConical size={8} />
+                    x{potions}
+                  </button>
+                  <span data-testid="camp-hp-display" className={`font-pixel text-[8px] ${hpLow ? 'text-red-400' : 'text-zinc-400'}`}>
+                    {hp} / {maxHP}
+                  </span>
+                </div>
+              </div>
+              <div className="h-5 bg-[#09090B] border-2 border-[#3F3F46] w-full overflow-hidden relative">
+                <motion.div
+                  className={`h-full bg-gradient-to-r ${hpLow ? 'from-red-800 to-red-500' : 'from-green-800 to-green-400'}`}
+                  initial={{ width: 0 }}
+                  animate={{ width: `${hpPercent}%` }}
+                  transition={{ duration: 0.5, ease: 'easeOut' }}
+                />
+                <span className="absolute inset-0 flex items-center justify-center font-pixel text-[7px] text-white/90">
+                  {hpPercent}%
                 </span>
               </div>
             </div>

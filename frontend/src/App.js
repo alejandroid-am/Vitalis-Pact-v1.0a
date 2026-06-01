@@ -5,15 +5,21 @@ import Onboarding from './components/Onboarding';
 import Camp from './components/Camp';
 import Hero from './components/Hero';
 import Exploration from './components/Exploration';
+import Market from './components/Market';
 import BottomNav from './components/BottomNav';
 import WorkoutModal from './components/WorkoutModal';
 import LevelUpModal from './components/LevelUpModal';
 import CombatModal from './components/CombatModal';
 
+// Enemy power buff to compensate for persistent HP
+const ENEMY_BUFF = 1.17;
+
 function App() {
   const {
     gameData, updateGameData, addXP, upgradeStat, addToInventory,
     getDailyMinutes, recordDailyMinutes,
+    getMaxHP, damagePlayer, setPlayerHP, usePotion,
+    addGold, buyPotion, buyGear, sellGear, openMysteryChest,
   } = useGameData();
 
   const [screen, setScreen] = useState('camp');
@@ -41,10 +47,22 @@ function App() {
     }
   };
 
-  const handleAttemptMission = (mission) => setActiveMission(mission);
+  const handleAttemptMission = (mission) => {
+    // Apply enemy buff to compensate for persistent HP
+    const buffedMission = {
+      ...mission,
+      enemy: {
+        ...mission.enemy,
+        hp: Math.ceil(mission.enemy.hp * ENEMY_BUFF),
+        attack: Math.ceil(mission.enemy.attack * ENEMY_BUFF),
+      },
+    };
+    setActiveMission(buffedMission);
+  };
 
-  const handleCombatVictory = () => {
+  const handleCombatVictory = (goldEarned) => {
     addToInventory(activeMission.loot, activeMission.name);
+    if (goldEarned > 0) addGold(goldEarned);
     setActiveMission(null);
   };
 
@@ -58,10 +76,29 @@ function App() {
     <div className="min-h-screen bg-[#09090B]">
       <div className="max-w-md mx-auto min-h-screen relative pb-16">
         {screen === 'camp' && (
-          <Camp gameData={gameData} onLogWorkout={() => setWorkoutOpen(true)} />
+          <Camp
+            gameData={gameData}
+            maxHP={getMaxHP()}
+            onLogWorkout={() => setWorkoutOpen(true)}
+            onUsePotion={usePotion}
+          />
         )}
         {screen === 'hero' && (
-          <Hero gameData={gameData} onUpgradeStat={upgradeStat} />
+          <Hero
+            gameData={gameData}
+            maxHP={getMaxHP()}
+            onUpgradeStat={upgradeStat}
+            onUsePotion={usePotion}
+          />
+        )}
+        {screen === 'market' && (
+          <Market
+            gameData={gameData}
+            onBuyPotion={buyPotion}
+            onBuyGear={buyGear}
+            onOpenChest={openMysteryChest}
+            onSellGear={sellGear}
+          />
         )}
         {screen === 'exploration' && (
           <Exploration gameData={gameData} onAttemptMission={handleAttemptMission} />
@@ -84,6 +121,10 @@ function App() {
         <CombatModal
           mission={activeMission}
           gameData={gameData}
+          maxHP={getMaxHP()}
+          onPlayerDamage={damagePlayer}
+          onSyncHP={setPlayerHP}
+          onUsePotion={usePotion}
           onVictory={handleCombatVictory}
           onDefeat={handleCombatDefeat}
           onClose={() => setActiveMission(null)}
