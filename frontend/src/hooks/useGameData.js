@@ -66,7 +66,9 @@ export function useGameData() {
         }
         return merged;
       }
-    } catch {}
+    } catch (err) {
+      console.error('[useGameData] Failed to parse saved game from LocalStorage:', err);
+    }
     return { ...INITIAL_STATE };
   });
 
@@ -80,27 +82,33 @@ export function useGameData() {
 
   // ─── XP & LEVEL ────────────────────────────────────────
   const addXP = (xpToAdd) => {
-    let { level, xp, xpMax, sp } = gameData;
-    xp += xpToAdd;
-    let levelsGained = 0;
+    let result = { levelsGained: 0, newLevel: 1 };
+    setGameData(prev => {
+      let { level, xp, xpMax, sp } = prev;
+      xp += xpToAdd;
+      let levelsGained = 0;
 
-    while (xp >= xpMax) {
-      xp -= xpMax;
-      level++;
-      sp++;
-      levelsGained++;
-      xpMax = Math.round(xpMax * 1.2);
-    }
+      while (xp >= xpMax) {
+        xp -= xpMax;
+        level++;
+        sp++;
+        levelsGained++;
+        xpMax = Math.round(xpMax * 1.2);
+      }
 
-    setGameData(prev => ({ ...prev, level, xp, xpMax, sp }));
-    return { levelsGained, newLevel: level };
+      result = { levelsGained, newLevel: level };
+      return { ...prev, level, xp, xpMax, sp };
+    });
+    return result;
   };
 
   const upgradeStat = (stat) => {
-    if (gameData.sp <= 0) return false;
+    let ok = false;
     setGameData(prev => {
+      if (prev.sp <= 0) return prev;
       const newStats = { ...prev.stats, [stat]: prev.stats[stat] + 1 };
       const hpBonus = stat === 'endurance' ? 5 : 0;
+      ok = true;
       return {
         ...prev,
         sp: prev.sp - 1,
@@ -108,12 +116,13 @@ export function useGameData() {
         hp: Math.min(getMaxHP(newStats), prev.hp + hpBonus),
       };
     });
-    return true;
+    return ok;
   };
 
   // ─── QUEST LOOT (relics) ───────────────────────────────
   const addToInventory = (item, missionName) => {
     const entry = {
+      id: `${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
       item,
       from: missionName,
       date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
@@ -367,7 +376,10 @@ export function useGameData() {
       const today = todayKey();
       const data = JSON.parse(localStorage.getItem('fq_daily_workout') || '{}');
       return data.date === today ? (data.totalMinutes || 0) : 0;
-    } catch { return 0; }
+    } catch (err) {
+      console.error('[useGameData] Failed to read fq_daily_workout:', err);
+      return 0;
+    }
   };
 
   const recordDailyMinutes = (minutes) => {
@@ -403,7 +415,10 @@ export function useGameData() {
         try {
           const d = JSON.parse(localStorage.getItem('fq_daily_workout') || '{}');
           return d.date === today ? (d.totalMinutes || 0) : 0;
-        } catch { return 0; }
+        } catch (err) {
+          console.error('[useGameData] Failed to read daily minutes for boost:', err);
+          return 0;
+        }
       })();
 
       let newBoost = prev.dailyBoost || { currentStreak: 0, lastClaimedDate: null };

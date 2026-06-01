@@ -217,17 +217,20 @@ const Hero = ({ gameData, maxHP, isStiff, onUpgradeStat, onUsePotion, onOpenBag 
             </div>
           ) : (
             <div className="grid grid-cols-2 gap-2">
-              {inventory.map((entry, i) => (
-                <div
-                  key={i}
-                  data-testid={`inventory-item-${i}`}
-                  className="bg-[#18181B] border-2 border-[#3F3F46] p-2.5"
-                >
-                  <p className="font-pixel text-[8px] text-[#FF4500] leading-tight mb-1">{entry.item}</p>
-                  <p className="font-plex text-[10px] text-zinc-500 leading-tight truncate">{entry.from}</p>
-                  <p className="font-plex text-[10px] text-zinc-600 mt-0.5">{entry.date}</p>
-                </div>
-              ))}
+              {inventory.map((entry, i) => {
+                const key = entry.id || `${entry.item}-${entry.from}-${entry.date}`;
+                return (
+                  <div
+                    key={key}
+                    data-testid={`inventory-item-${i}`}
+                    className="bg-[#18181B] border-2 border-[#3F3F46] p-2.5"
+                  >
+                    <p className="font-pixel text-[8px] text-[#FF4500] leading-tight mb-1">{entry.item}</p>
+                    <p className="font-plex text-[10px] text-zinc-500 leading-tight truncate">{entry.from}</p>
+                    <p className="font-plex text-[10px] text-zinc-600 mt-0.5">{entry.date}</p>
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>
