@@ -105,7 +105,7 @@ const CombatModal = ({ mission, gameData, onVictory, onDefeat, onClose }) => {
           {/* Header */}
           <div className="bg-[#27272A] border-b-2 border-[#3F3F46] px-4 py-3 flex items-center justify-between">
             <span className="font-pixel text-[9px] text-zinc-300">MISSION BRIEFING</span>
-            <button onClick={onClose} className="text-zinc-600 hover:text-zinc-400">
+            <button onClick={onClose} data-testid="combat-modal-close" className="text-zinc-600 hover:text-zinc-400">
               <X size={16} />
             </button>
           </div>
@@ -163,6 +163,7 @@ const CombatModal = ({ mission, gameData, onVictory, onDefeat, onClose }) => {
                 BEGIN BATTLE
               </button>
               <button
+                data-testid="combat-retreat-btn"
                 onClick={onClose}
                 className="w-full bg-transparent text-zinc-500 hover:text-zinc-300 font-pixel text-[9px] py-2 border border-[#3F3F46] transition-all"
               >

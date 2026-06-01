@@ -74,6 +74,28 @@ A fitness app powered by RPG mechanics. The user flow is:
 }
 ```
 
+## Implemented - V2 (June 2026)
+
+### Anti-Cheat System
+- Session limit: 120 min max per log entry
+- Daily limit: 240 min total per day (tracked in localStorage `fq_daily_workout`)
+- Progress bar shows daily usage in real-time
+- RPG-style error messages: "Even legendary warriors must rest" / "The forge is built during rest"
+
+### Turn-Based Combat System (CombatModal)
+- Replaced instant mission result with 3-phase modal: intro → combat → victory/defeat
+- Player stats directly affect combat: STR=ATK damage, AGI=dodge%, END=max HP
+- Mission Briefing intro: shows Hero vs Enemy stats comparison with tier badges
+- Combat phase: live HP bars, animated combat log, ATTACK + FLEE actions
+- 9 unique enemies across 3 tiers: Tier I (Emberwood), Tier II (Ironpeak), Tier III (Ashveil)
+- Victory: loot claimed and added to inventory; Defeat: motivational RPG message
+
+### Mindmap Roadmap (for future iterations)
+- V3: Auto-sync with Apple Health / Strava / Garmin (X2 EXP for verified workouts)
+- V4: Equipment system (armor, weapons, potions from loot); Coins/Gems economy
+- V5: Full ARPG movement on mission map (incremental Option C) + Monster Hunter mission loops
+- V6: Season Pass monetization + Weekly/Seasonal Challenges
+
 ## Prioritized Backlog
 
 ### P0 - Critical for next iteration
