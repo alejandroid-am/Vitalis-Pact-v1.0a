@@ -82,5 +82,21 @@ export function useGameData() {
     setGameData(INITIAL_STATE);
   };
 
-  return { gameData, updateGameData, addXP, upgradeStat, addToInventory, resetGame };
+  // Daily workout tracking (anti-cheat)
+  const getDailyMinutes = () => {
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      const data = JSON.parse(localStorage.getItem('fq_daily_workout') || '{}');
+      return data.date === today ? (data.totalMinutes || 0) : 0;
+    } catch { return 0; }
+  };
+
+  const recordDailyMinutes = (minutes) => {
+    const today = new Date().toISOString().split('T')[0];
+    const data = JSON.parse(localStorage.getItem('fq_daily_workout') || '{}');
+    const total = (data.date === today ? (data.totalMinutes || 0) : 0) + minutes;
+    localStorage.setItem('fq_daily_workout', JSON.stringify({ date: today, totalMinutes: total }));
+  };
+
+  return { gameData, updateGameData, addXP, upgradeStat, addToInventory, resetGame, getDailyMinutes, recordDailyMinutes };
 }

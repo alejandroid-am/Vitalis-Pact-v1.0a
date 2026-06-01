@@ -8,14 +8,18 @@ import Exploration from './components/Exploration';
 import BottomNav from './components/BottomNav';
 import WorkoutModal from './components/WorkoutModal';
 import LevelUpModal from './components/LevelUpModal';
-import MissionModal from './components/MissionModal';
+import CombatModal from './components/CombatModal';
 
 function App() {
-  const { gameData, updateGameData, addXP, upgradeStat, addToInventory } = useGameData();
+  const {
+    gameData, updateGameData, addXP, upgradeStat, addToInventory,
+    getDailyMinutes, recordDailyMinutes,
+  } = useGameData();
+
   const [screen, setScreen] = useState('camp');
   const [workoutOpen, setWorkoutOpen] = useState(false);
   const [levelUpData, setLevelUpData] = useState(null);
-  const [missionResult, setMissionResult] = useState(null);
+  const [activeMission, setActiveMission] = useState(null);
 
   const isOnboarding = !gameData.name || !gameData.characterClass;
 
@@ -24,6 +28,7 @@ function App() {
   };
 
   const handleLogWorkout = (minutes, activityType) => {
+    recordDailyMinutes(minutes);
     const baseXP = minutes * 3;
     const isBonus =
       (gameData.characterClass === 'warrior' && activityType === 'strength') ||
@@ -36,14 +41,14 @@ function App() {
     }
   };
 
-  const handleAttemptMission = (mission) => {
-    const { stat, value } = mission.requirement;
-    const success = gameData.stats[stat] >= value;
-    if (success) {
-      addToInventory(mission.loot, mission.name);
-    }
-    setMissionResult({ mission, success });
+  const handleAttemptMission = (mission) => setActiveMission(mission);
+
+  const handleCombatVictory = () => {
+    addToInventory(activeMission.loot, activeMission.name);
+    setActiveMission(null);
   };
+
+  const handleCombatDefeat = () => setActiveMission(null);
 
   if (isOnboarding) {
     return <Onboarding onComplete={handleOnboarding} />;
@@ -67,6 +72,7 @@ function App() {
       {workoutOpen && (
         <WorkoutModal
           characterClass={gameData.characterClass}
+          getDailyMinutes={getDailyMinutes}
           onClose={() => setWorkoutOpen(false)}
           onSubmit={handleLogWorkout}
         />
@@ -74,8 +80,14 @@ function App() {
       {levelUpData && (
         <LevelUpModal data={levelUpData} onClose={() => setLevelUpData(null)} />
       )}
-      {missionResult && (
-        <MissionModal result={missionResult} onClose={() => setMissionResult(null)} />
+      {activeMission && (
+        <CombatModal
+          mission={activeMission}
+          gameData={gameData}
+          onVictory={handleCombatVictory}
+          onDefeat={handleCombatDefeat}
+          onClose={() => setActiveMission(null)}
+        />
       )}
     </div>
   );

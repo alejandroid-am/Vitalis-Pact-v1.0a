@@ -1,11 +1,17 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { X, Timer, Dumbbell, Wind, Flame } from 'lucide-react';
+import { X, Timer, Dumbbell, Wind, Flame, AlertTriangle, Clock } from 'lucide-react';
 
-const WorkoutModal = ({ characterClass, onClose, onSubmit }) => {
+const SESSION_LIMIT = 120;
+const DAILY_LIMIT = 240;
+
+const WorkoutModal = ({ characterClass, getDailyMinutes, onClose, onSubmit }) => {
   const [minutes, setMinutes] = useState('');
   const [activityType, setActivityType] = useState('');
   const [error, setError] = useState('');
+
+  const dailyUsed = getDailyMinutes();
+  const dailyRemaining = Math.max(0, DAILY_LIMIT - dailyUsed);
 
   const parsedMin = parseInt(minutes, 10);
   const validInput = !isNaN(parsedMin) && parsedMin > 0 && activityType;
@@ -18,6 +24,18 @@ const WorkoutModal = ({ characterClass, onClose, onSubmit }) => {
   const handleSubmit = () => {
     if (!minutes || isNaN(parsedMin) || parsedMin <= 0) {
       setError('Enter a valid number of minutes.');
+      return;
+    }
+    if (parsedMin > SESSION_LIMIT) {
+      setError(`Overtraining detected! Even legendary warriors must rest. Max ${SESSION_LIMIT} min per session.`);
+      return;
+    }
+    if (dailyRemaining <= 0) {
+      setError("Your body has forged enough iron today, champion. The muscles are built during rest. Return at dawn.");
+      return;
+    }
+    if (parsedMin > dailyRemaining) {
+      setError(`Daily forge limit close! You can still log ${dailyRemaining} more minutes today. Adjust your session.`);
       return;
     }
     if (!activityType) {
@@ -40,15 +58,31 @@ const WorkoutModal = ({ characterClass, onClose, onSubmit }) => {
         className="bg-[#18181B] border-4 border-[#3F3F46] w-full max-w-sm p-5 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]"
       >
         {/* Header */}
-        <div className="flex items-center justify-between mb-5">
+        <div className="flex items-center justify-between mb-4">
           <h2 className="font-pixel text-xs text-zinc-100">LOG WORKOUT</h2>
-          <button
-            data-testid="close-workout-modal"
-            onClick={onClose}
-            className="text-zinc-500 hover:text-zinc-300 transition-colors"
-          >
+          <button data-testid="close-workout-modal" onClick={onClose} className="text-zinc-500 hover:text-zinc-300 transition-colors">
             <X size={18} />
           </button>
+        </div>
+
+        {/* Daily Progress */}
+        <div className="bg-[#09090B] border-2 border-[#3F3F46] p-3 mb-4">
+          <div className="flex items-center justify-between mb-1.5">
+            <div className="flex items-center gap-1.5">
+              <Clock size={11} className="text-zinc-500" />
+              <span className="font-pixel text-[8px] text-zinc-400">TODAY'S TRAINING</span>
+            </div>
+            <span className="font-pixel text-[8px] text-zinc-400">{dailyUsed}/{DAILY_LIMIT} min</span>
+          </div>
+          <div className="h-3 bg-[#27272A] border border-[#3F3F46] w-full overflow-hidden">
+            <div
+              className={`h-full transition-all duration-500 ${dailyUsed >= DAILY_LIMIT ? 'bg-red-600' : dailyUsed >= DAILY_LIMIT * 0.75 ? 'bg-orange-500' : 'bg-[#FF4500]'}`}
+              style={{ width: `${Math.min(100, (dailyUsed / DAILY_LIMIT) * 100)}%` }}
+            />
+          </div>
+          <p className="font-plex text-[10px] text-zinc-500 mt-1">
+            {dailyRemaining > 0 ? `${dailyRemaining} min remaining today` : 'Daily limit reached — rest up!'}
+          </p>
         </div>
 
         {/* Minutes Input */}
@@ -61,16 +95,17 @@ const WorkoutModal = ({ characterClass, onClose, onSubmit }) => {
             data-testid="workout-minutes-input"
             type="number"
             min="1"
-            max="300"
+            max={SESSION_LIMIT}
             value={minutes}
             onChange={e => { setMinutes(e.target.value); setError(''); }}
-            placeholder="e.g. 45"
+            placeholder={`1 – ${SESSION_LIMIT} min`}
             className="bg-[#09090B] border-2 border-[#52525B] text-zinc-100 font-plex text-lg px-4 py-3 focus:outline-none focus:border-[#FF4500] placeholder-zinc-600 w-full transition-colors"
           />
+          <p className="font-plex text-[10px] text-zinc-600 mt-1">Max {SESSION_LIMIT} min per session</p>
         </div>
 
         {/* Activity Type */}
-        <div className="mb-5">
+        <div className="mb-4">
           <label className="font-pixel text-[9px] text-zinc-400 uppercase tracking-wider block mb-2">
             Activity Type
           </label>
@@ -103,7 +138,7 @@ const WorkoutModal = ({ characterClass, onClose, onSubmit }) => {
         </div>
 
         {/* XP Preview */}
-        {validInput && (
+        {validInput && parsedMin <= SESSION_LIMIT && parsedMin <= dailyRemaining && (
           <motion.div
             initial={{ opacity: 0, y: 6 }}
             animate={{ opacity: 1, y: 0 }}
@@ -116,29 +151,39 @@ const WorkoutModal = ({ characterClass, onClose, onSubmit }) => {
               </div>
               <div className="text-right">
                 <span data-testid="xp-preview" className="font-pixel text-lg text-[#FF4500]">+{xpGained}</span>
-                {isBonus && (
-                  <p className="font-pixel text-[7px] text-green-400">CLASS BONUS +20%</p>
-                )}
+                {isBonus && <p className="font-pixel text-[7px] text-green-400">CLASS BONUS +20%</p>}
               </div>
             </div>
             <p className="font-plex text-[10px] text-zinc-500 mt-1">
-              {parsedMin} min x 3 XP{isBonus ? ' x 1.2 (bonus)' : ''}
+              {parsedMin} min × 3 XP{isBonus ? ' × 1.2 (bonus)' : ''}
             </p>
           </motion.div>
         )}
 
         {/* Error */}
         {error && (
-          <p className="font-plex text-[#FF4500] text-xs mb-3">{error}</p>
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="flex items-start gap-2 bg-red-900/30 border border-red-700/50 p-3 mb-4"
+          >
+            <AlertTriangle size={14} className="text-red-400 flex-shrink-0 mt-0.5" />
+            <p data-testid="workout-error" className="font-plex text-xs text-red-300 leading-snug">{error}</p>
+          </motion.div>
         )}
 
         {/* Submit */}
         <button
           data-testid="submit-workout-btn"
           onClick={handleSubmit}
-          className="w-full bg-[#FF4500] hover:bg-[#DC2626] text-white font-pixel text-[10px] py-4 border-2 border-[#FF8C00] shadow-[inset_-2px_-2px_0px_rgba(0,0,0,0.4),_3px_3px_0px_rgba(0,0,0,1)] active:translate-y-[2px] active:translate-x-[2px] active:shadow-none transition-all uppercase"
+          disabled={dailyRemaining <= 0}
+          className={`w-full text-white font-pixel text-[10px] py-4 border-2 shadow-[inset_-2px_-2px_0px_rgba(0,0,0,0.4),_3px_3px_0px_rgba(0,0,0,1)] active:translate-y-[2px] active:translate-x-[2px] active:shadow-none transition-all uppercase ${
+            dailyRemaining <= 0
+              ? 'bg-zinc-700 border-zinc-600 cursor-not-allowed opacity-60'
+              : 'bg-[#FF4500] hover:bg-[#DC2626] border-[#FF8C00]'
+          }`}
         >
-          Earn XP
+          {dailyRemaining <= 0 ? 'Rest Until Tomorrow' : 'Earn XP'}
         </button>
       </motion.div>
     </div>
