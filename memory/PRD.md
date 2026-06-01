@@ -147,9 +147,64 @@ A fitness app powered by RPG mechanics. The user flow is:
 
 ## Prioritized Backlog
 
-### P0 - Next Sprint (remaining V3 features)
-- [ ] **Stiffness Debuff (Entumecido)**: track `lastWorkoutTimestamp`; if >48h inactive apply -30% dmg dealt / +30% dmg taken; visible status on Hero; cured on next workout
-- [ ] **Special Dynamic Events**: highlighted section atop Exploration; enemies dynamically scale to PlayerStats+20%; reward 75-100G + epic drops; intensified screen-shake on critical hits
+## Implemented - V3.1 (Feb 2026) — Achievements, Daily Boost, Locked Zones, Stiffness, Special Events
+
+### Apple Activity-style Achievements (30 medals)
+- 10 progressive achievements × 3 tiers (Bronze/Silver/Gold)
+- Iron Discipline (lifetime minutes), Long Road (longest streak), Hunter (enemies defeated), Treasure Hoarder (lifetime gold), Chest Gambler (chests opened), Mighty/Swift/Unyielding (stat tiers), Apothecary (potions drunk), Champion (special events)
+- Live progress bars in Hero with tier badges and threshold dots
+- Medal counter summary (🥉🥈🥇) at panel header
+- Tracked via `gameData.lifetime` and `gameData.streak` objects
+
+### Daily Gold Boost (progressive 7-day streak)
+- Day 1 +25G → Day 2 +50G → ... → Day 7 +200G + free Mystery Chest
+- Popup `DailyBoostModal` shows once per day with day chain D1-D7 and reward preview
+- Auto-claimed when player logs ≥20 min workout that day
+- Streak resets if a day is missed (gap > 1)
+- Toast notification on claim
+
+### OPEN BAG shortcut
+- Hero screen has direct button to navigate to Market → BAG tab
+- "Quest Relics" replaces former "Trophies" label
+
+### New Zones Locked by Level
+- Frostbite Tundra (Tundra) — unlocks at Level 6, 3 missions with Tier III enemies (Frostfang Reaver, Glassdust Stalker, Hollow Cold Sentinel)
+- Caldera Volcano (Volcano) — unlocks at Level 9, 3 missions with Tier III enemies (Magma Constrictor, Cinderborn Marauder, Crater Watcher)
+- Locked zones render grayscale with "UNLOCKS AT LEVEL X" badge
+- Existing zones also have unlockLevel: Emberwood 1, Ironpeak 3, Ashveil 5
+
+### Stiffness Debuff (Entumecido)
+- Tracks `lastWorkoutAt` ISO timestamp; computed via `isStiff()` helper
+- After 48h inactive: -30% damage dealt / +30% damage taken
+- Red banner shown on Camp and Hero with "STIFFNESS — ENTUMECIDO"
+- Combat intro shows debuff alert; multipliers applied in `CombatModal` (`STIFF_OUT=0.7`, `STIFF_IN=1.3`)
+- Cured automatically on next workout
+
+### Special Dynamic Events (separate fantastical zones)
+- ⚡ SPECIAL EVENT card pinned to top of Exploration
+- 4 unique events rotate every 12h deterministically: The Astral Rift, Bloodmoon Coliseum, Forgotten God's Vault, The Mirror Maw
+- Live countdown timer to next rotation
+- Enemy stats scale to player stats × 1.2 (HP, ATK, dodge halved)
+- Rewards: 75-100G + **guaranteed epic gear** drop
+- Defeating a special event increments `lifetime.specialEventsCompleted` (Champion achievement)
+- Custom gradient backgrounds per event (no shared zone art)
+
+### Updated Data Model (additions)
+```json
+{
+  "lifetime": { "totalMinutes": 0, "enemiesDefeated": 0, "goldEarned": 0, "chestsOpened": 0, "potionsDrunk": 0, "specialEventsCompleted": 0 },
+  "streak": { "current": 0, "longest": 0, "lastWorkoutDate": "YYYY-MM-DD" },
+  "dailyBoost": { "currentStreak": 0, "lastClaimedDate": "YYYY-MM-DD" },
+  "lastWorkoutAt": "ISO"
+}
+```
+
+## Prioritized Backlog
+
+### P0 - Next Sprint
+- [ ] Friends system (visibility of achievements + leaderboard) — user-flagged for future
+- [ ] Onboarding tutorial that explains new mechanics (HP regen, Market, Stiffness, Special Events)
+- [ ] Sound effects on chest open, level up, mission victory
 
 ### P1 - High Value
 - [ ] Workout history log (last 5 sessions on Camp screen)

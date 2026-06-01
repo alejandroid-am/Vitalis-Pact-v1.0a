@@ -141,7 +141,7 @@ function App() {
           <Hero
             gameData={gameData}
             maxHP={getMaxHP()}
-            isStiff={isStiff}
+            isStiff={isStiff()}
             onUpgradeStat={upgradeStat}
             onUsePotion={usePotion}
             onOpenBag={handleOpenBag}

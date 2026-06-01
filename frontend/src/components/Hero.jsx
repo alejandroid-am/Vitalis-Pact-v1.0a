@@ -82,7 +82,7 @@ const StiffnessBanner = () => (
 
 const Hero = ({ gameData, maxHP, isStiff, onUpgradeStat, onUsePotion, onOpenBag }) => {
   const { name, characterClass, level, sp, stats, inventory, hp, gold, gear, streak } = gameData;
-  const stiff = isStiff?.();
+  const stiff = !!isStiff;
 
   return (
     <div className="bg-[#09090B] min-h-[calc(100vh-4rem)] flex flex-col">
