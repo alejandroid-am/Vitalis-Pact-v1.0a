@@ -1,6 +1,10 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { GEAR_POOL } from '../data/shop';
 import { DAILY_BOOST_TARGET_MIN, getBoostReward } from '../data/achievements';
+import {
+  getWeekKey, getChallengeForWeek, getEarnedWeeklyTier,
+  WEEKLY_CHALLENGES, TIER_REWARDS,
+} from '../data/weeklyChallenges';
 
 const STORAGE_KEY = 'fitness_quest_v1';
 const STIFFNESS_THRESHOLD_MS = 48 * 60 * 60 * 1000;
@@ -44,6 +48,11 @@ const INITIAL_STATE = {
   streak: { current: 0, longest: 0, lastWorkoutDate: null },
   dailyBoost: { currentStreak: 0, lastClaimedDate: null },
   lastWorkoutAt: null,
+  // V3.3 additions
+  workoutHistory: [],   // last 30 sessions: { id, date(ISO), minutes, type, xp, bonus }
+  weekly: { weekKey: null, challengeId: null,
+            progress: { minutes: 0, enemiesDefeated: 0, goldEarned: 0, chestsOpened: 0, potionsDrunk: 0 },
+            claimedTiers: { bronze: false, silver: false, gold: false } },
 };
 
 // Sum of bonuses from equipped gear items.
@@ -72,6 +81,27 @@ export const getEffectiveStats = (data) => {
   };
 };
 
+// Returns a fresh weekly slice if the stored week is stale.
+const ensureWeekly = (prevWeekly) => {
+  const currentKey = getWeekKey();
+  if (prevWeekly && prevWeekly.weekKey === currentKey) return prevWeekly;
+  const challenge = getChallengeForWeek(currentKey);
+  return {
+    weekKey: currentKey,
+    challengeId: challenge.id,
+    progress: { minutes: 0, enemiesDefeated: 0, goldEarned: 0, chestsOpened: 0, potionsDrunk: 0 },
+    claimedTiers: { bronze: false, silver: false, gold: false },
+  };
+};
+
+const bumpWeekly = (prevWeekly, metric, delta) => {
+  const weekly = ensureWeekly(prevWeekly);
+  return {
+    ...weekly,
+    progress: { ...weekly.progress, [metric]: (weekly.progress[metric] || 0) + delta },
+  };
+};
+
 export function useGameData() {
   const [gameData, setGameData] = useState(() => {
     try {
@@ -88,6 +118,10 @@ export function useGameData() {
           lifetime: { ...INITIAL_STATE.lifetime, ...(parsed.lifetime || {}) },
           streak: { ...INITIAL_STATE.streak, ...(parsed.streak || {}) },
           dailyBoost: { ...INITIAL_STATE.dailyBoost, ...(parsed.dailyBoost || {}) },
+          workoutHistory: parsed.workoutHistory || [],
+          weekly: { ...INITIAL_STATE.weekly, ...(parsed.weekly || {}),
+                    progress: { ...INITIAL_STATE.weekly.progress, ...((parsed.weekly && parsed.weekly.progress) || {}) },
+                    claimedTiers: { ...INITIAL_STATE.weekly.claimedTiers, ...((parsed.weekly && parsed.weekly.claimedTiers) || {}) } },
         };
         if (typeof merged.hp !== 'number' || merged.hp <= 0) {
           merged.hp = getMaxHP(merged.stats);
@@ -201,6 +235,7 @@ export function useGameData() {
         potions: prev.potions - 1,
         hp: Math.min(max, prev.hp + healAmt),
         lifetime: { ...prev.lifetime, potionsDrunk: (prev.lifetime?.potionsDrunk || 0) + 1 },
+        weekly: bumpWeekly(prev.weekly, 'potionsDrunk', 1),
       };
     });
     return ok;
@@ -245,6 +280,7 @@ export function useGameData() {
       ...prev,
       gold: prev.gold + amount,
       lifetime: { ...prev.lifetime, goldEarned: (prev.lifetime?.goldEarned || 0) + Math.max(0, amount) },
+      weekly: amount > 0 ? bumpWeekly(prev.weekly, 'goldEarned', amount) : ensureWeekly(prev.weekly),
     }));
   }, []);
 
@@ -395,6 +431,7 @@ export function useGameData() {
         potions: newPotions,
         gear: newGear,
         lifetime: { ...prev.lifetime, chestsOpened: (prev.lifetime?.chestsOpened || 0) + 1 },
+        weekly: bumpWeekly(prev.weekly, 'chestsOpened', 1),
       };
     });
 
@@ -435,6 +472,7 @@ export function useGameData() {
         potions: newPotions,
         gear: newGear,
         lifetime: { ...prev.lifetime, chestsOpened: (prev.lifetime?.chestsOpened || 0) + 1 },
+        weekly: bumpWeekly(prev.weekly, 'chestsOpened', 1),
       };
     });
 
@@ -462,8 +500,9 @@ export function useGameData() {
 
   // ─── LIFETIME / STREAK / WORKOUT ────────────────────────
   // Called on every successful workout submit. Updates streak, lifetime minutes,
-  // lastWorkoutAt (for stiffness), and returns whether the daily boost should be claimed now.
-  const recordWorkout = useCallback((minutes) => {
+  // lastWorkoutAt (for stiffness), workoutHistory, weekly progress;
+  // returns whether the daily boost should be claimed now.
+  const recordWorkout = useCallback((minutes, activityType, xpGained, isBonus) => {
     let boostClaim = null;
     setGameData(prev => {
       const today = todayKey();
@@ -494,7 +533,6 @@ export function useGameData() {
 
       let newBoost = prev.dailyBoost || { currentStreak: 0, lastClaimedDate: null };
       if (todayMins >= DAILY_BOOST_TARGET_MIN && newBoost.lastClaimedDate !== today) {
-        // Determine new boost streak day
         let boostStreak;
         if (!newBoost.lastClaimedDate) boostStreak = 1;
         else {
@@ -506,18 +544,29 @@ export function useGameData() {
         newBoost = { currentStreak: boostStreak, lastClaimedDate: today };
       }
 
+      // Workout history entry
+      const historyEntry = {
+        id: `${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+        date: nowISO(),
+        minutes: Math.max(0, minutes),
+        type: activityType || 'cardio',
+        xp: xpGained || 0,
+        bonus: !!isBonus,
+      };
+
       return {
         ...prev,
         lastWorkoutAt: nowISO(),
         streak: { current, longest, lastWorkoutDate: today },
         lifetime: { ...prev.lifetime, totalMinutes: (prev.lifetime?.totalMinutes || 0) + Math.max(0, minutes) },
         dailyBoost: newBoost,
+        workoutHistory: [historyEntry, ...(prev.workoutHistory || [])].slice(0, 30),
+        weekly: bumpWeekly(prev.weekly, 'minutes', Math.max(0, minutes)),
       };
     });
     return boostClaim;
   }, []);
 
-  // ─── COMBAT TRACKING ────────────────────────────────────
   const recordEnemyDefeat = useCallback(({ isSpecial = false } = {}) => {
     setGameData(prev => ({
       ...prev,
@@ -526,6 +575,7 @@ export function useGameData() {
         enemiesDefeated: (prev.lifetime?.enemiesDefeated || 0) + 1,
         specialEventsCompleted: (prev.lifetime?.specialEventsCompleted || 0) + (isSpecial ? 1 : 0),
       },
+      weekly: bumpWeekly(prev.weekly, 'enemiesDefeated', 1),
     }));
   }, []);
 
@@ -559,9 +609,101 @@ export function useGameData() {
     };
   }, [gameData.dailyBoost]);
 
+  // ─── WEEKLY CHALLENGE ───────────────────────────────────
+  const getWeeklyInfo = useCallback(() => {
+    const weekly = ensureWeekly(gameData.weekly);
+    const challenge = WEEKLY_CHALLENGES.find(c => c.id === weekly.challengeId) || getChallengeForWeek(weekly.weekKey);
+    const value = weekly.progress[challenge.metric] || 0;
+    const earned = getEarnedWeeklyTier(value, challenge.thresholds);
+    return { weekly, challenge, value, earned };
+  }, [gameData.weekly]);
+
+  // Claim a tier reward (gold/chest/legendary gear). Only if reached + not already claimed.
+  const claimWeeklyTier = useCallback((tier) => {
+    let result = { ok: false, reason: 'unreached', drop: null };
+    setGameData(prev => {
+      const weekly = ensureWeekly(prev.weekly);
+      const challenge = WEEKLY_CHALLENGES.find(c => c.id === weekly.challengeId) || getChallengeForWeek(weekly.weekKey);
+      const value = weekly.progress[challenge.metric] || 0;
+      const reached = value >= challenge.thresholds[tier];
+      if (!reached) { result = { ok: false, reason: 'unreached' }; return prev; }
+      if (weekly.claimedTiers[tier]) { result = { ok: false, reason: 'claimed' }; return prev; }
+
+      const reward = TIER_REWARDS[tier];
+      let nextGold = prev.gold;
+      let nextPotions = prev.potions;
+      let nextGear = prev.gear;
+      let drop = null;
+
+      if (reward.gold > 0) nextGold += reward.gold;
+      if (reward.chest) {
+        // Inline mystery roll (mimics openMysteryChest but free)
+        const roll = Math.random() * 100;
+        let kind, pickEntry;
+        if (roll < 60) { kind = 'potion'; pickEntry = { name: 'Health Potion' }; }
+        else if (roll < 90) { kind = 'common'; const p = GEAR_POOL.common; pickEntry = p[Math.floor(Math.random() * p.length)]; }
+        else if (roll < 99) { kind = 'epic'; const p = GEAR_POOL.epic; pickEntry = p[Math.floor(Math.random() * p.length)]; }
+        else { kind = 'legendary'; const p = GEAR_POOL.legendary; pickEntry = p[Math.floor(Math.random() * p.length)]; }
+        drop = { kind, ...pickEntry };
+        if (kind === 'potion') nextPotions += 1;
+        else nextGear = [{ id: `${Date.now()}_${Math.random().toString(36).slice(2, 7)}`, name: pickEntry.name, tier: pickEntry.tier, sellValue: pickEntry.sellValue, slot: pickEntry.slot, bonus: pickEntry.bonus }, ...nextGear].slice(0, 60);
+      }
+      if (reward.legendary) {
+        const p = GEAR_POOL.legendary;
+        const pick = p[Math.floor(Math.random() * p.length)];
+        drop = { kind: 'legendary', ...pick };
+        nextGear = [{ id: `${Date.now()}_${Math.random().toString(36).slice(2, 7)}`, name: pick.name, tier: pick.tier, sellValue: pick.sellValue, slot: pick.slot, bonus: pick.bonus }, ...nextGear].slice(0, 60);
+      }
+
+      result = { ok: true, drop };
+      return {
+        ...prev,
+        gold: nextGold,
+        potions: nextPotions,
+        gear: nextGear,
+        weekly: { ...weekly, claimedTiers: { ...weekly.claimedTiers, [tier]: true } },
+      };
+    });
+    return result;
+  }, []);
+
+  // ─── SAVE EXPORT / IMPORT / RESET ───────────────────────
+  const exportSave = useCallback(() => {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      return raw || JSON.stringify(gameData);
+    } catch (err) {
+      console.error('[useGameData] exportSave failed:', err);
+      return JSON.stringify(gameData);
+    }
+  }, [gameData]);
+
+  const importSave = useCallback((jsonString) => {
+    try {
+      const parsed = JSON.parse(jsonString);
+      if (!parsed || typeof parsed !== 'object' || !parsed.name) {
+        return { ok: false, reason: 'invalid_shape' };
+      }
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(parsed));
+      setGameData({ ...INITIAL_STATE, ...parsed });
+      return { ok: true };
+    } catch (err) {
+      console.error('[useGameData] importSave failed:', err);
+      return { ok: false, reason: 'parse_error' };
+    }
+  }, []);
+
+  const resetTutorial = useCallback(() => {
+    try { localStorage.removeItem('fq_tutorial_completed'); } catch (err) {
+      console.error('[useGameData] resetTutorial failed:', err);
+    }
+  }, []);
+
   const resetGame = () => {
     localStorage.removeItem(STORAGE_KEY);
     localStorage.removeItem('fq_daily_workout');
+    localStorage.removeItem('fq_tutorial_completed');
+    localStorage.removeItem('fq_boost_shown_date');
     setGameData({ ...INITIAL_STATE });
   };
 
@@ -604,5 +746,11 @@ export function useGameData() {
     recordEnemyDefeat,
     isStiff,
     getDailyBoostStatus,
+    // V3.3
+    getWeeklyInfo,
+    claimWeeklyTier,
+    exportSave,
+    importSave,
+    resetTutorial,
   };
 }

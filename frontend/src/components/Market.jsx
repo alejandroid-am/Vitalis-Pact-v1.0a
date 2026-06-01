@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Coins, Package, FlaskConical, Gift, Sparkles, X, Shield, Sword, Gem } from 'lucide-react';
 import { SHOP_ITEMS, TIER_STYLES, SLOT_LABEL } from '../data/shop';
 import { sfx } from '../utils/sounds';
+import { vibrate } from '../utils/haptics';
 
 const SLOT_ICON = { weapon: Sword, armor: Shield, trinket: Gem };
 
@@ -157,9 +158,7 @@ const Market = ({ gameData, initialTab = 'shop', onBuyPotion, onBuyGear, onOpenC
   };
 
   const handleOpenChest = () => {
-    if (typeof navigator !== 'undefined' && navigator.vibrate) {
-      navigator.vibrate([100, 100, 100, 400]);
-    }
+    vibrate([100, 100, 100, 400]);
     const res = onOpenChest(100);
     if (!res.ok) {
       showToast('Not enough gold.', 'err');

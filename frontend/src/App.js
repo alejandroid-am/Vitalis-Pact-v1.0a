@@ -6,6 +6,8 @@ import Camp from './components/Camp';
 import Hero from './components/Hero';
 import Exploration from './components/Exploration';
 import Market from './components/Market';
+import Settings from './components/Settings';
+import Friends from './components/Friends';
 import BottomNav from './components/BottomNav';
 import WorkoutModal from './components/WorkoutModal';
 import LevelUpModal from './components/LevelUpModal';
@@ -27,9 +29,11 @@ function App() {
     addGold, buyPotion, buyGear, sellGear, equipGear, unequipGear,
     openMysteryChest, grantFreeChest, addGear, addPotion,
     recordWorkout, recordEnemyDefeat, isStiff, getDailyBoostStatus,
+    getWeeklyInfo, claimWeeklyTier, exportSave, importSave, resetTutorial, resetGame,
   } = useGameData();
 
   const [screen, setScreen] = useState('camp');
+  const [prevScreen, setPrevScreen] = useState('camp');
   const [marketTab, setMarketTab] = useState('shop');
   const [workoutOpen, setWorkoutOpen] = useState(false);
   const [levelUpData, setLevelUpData] = useState(null);
@@ -40,7 +44,7 @@ function App() {
 
   const isOnboarding = !gameData.name || !gameData.characterClass;
 
-  // Unlock audio context on first user interaction
+  // Unlock audio on first user interaction
   useEffect(() => {
     const handler = () => { unlockAudio(); window.removeEventListener('pointerdown', handler); };
     window.addEventListener('pointerdown', handler);
@@ -54,7 +58,7 @@ function App() {
     if (!done) setTutorialOpen(true);
   }, [isOnboarding]);
 
-  // Daily boost popup once per day on load
+  // Daily boost popup once per day on load (after tutorial)
   useEffect(() => {
     if (isOnboarding || tutorialOpen) return;
     const lastShown = localStorage.getItem('fq_boost_shown_date');
@@ -67,6 +71,12 @@ function App() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOnboarding, tutorialOpen]);
+
+  const navigate = (s) => {
+    sfx.click();
+    setPrevScreen(screen);
+    setScreen(s);
+  };
 
   const handleOnboarding = (name, characterClass) => {
     updateGameData({ name, characterClass });
@@ -86,7 +96,7 @@ function App() {
     const xpGained = isBonus ? Math.round(baseXP * 1.2) : baseXP;
     const { levelsGained, newLevel } = addXP(xpGained);
 
-    const boostClaim = recordWorkout(minutes);
+    const boostClaim = recordWorkout(minutes, activityType, xpGained, isBonus);
 
     setWorkoutOpen(false);
 
@@ -143,6 +153,7 @@ function App() {
   const handleOpenBag = () => {
     sfx.click();
     setMarketTab('bag');
+    setPrevScreen(screen);
     setScreen('market');
   };
 
@@ -151,17 +162,22 @@ function App() {
   }
 
   const effStats = getEffectiveStats();
+  const weeklyInfo = getWeeklyInfo();
+  const showBottomNav = !['settings', 'friends'].includes(screen);
 
   return (
     <div className="min-h-screen bg-[#09090B]">
-      <div className="max-w-md mx-auto min-h-screen relative pb-16">
+      <div className={`max-w-md mx-auto min-h-screen relative ${showBottomNav ? 'pb-16' : ''}`}>
         {screen === 'camp' && (
           <Camp
             gameData={gameData}
             maxHP={getMaxHP()}
             isStiff={isStiff()}
+            weeklyInfo={weeklyInfo}
             onLogWorkout={() => { sfx.click(); setWorkoutOpen(true); }}
             onUsePotion={() => { const ok = drinkPotion(); if (ok) sfx.potion(); return ok; }}
+            onOpenSettings={() => navigate('settings')}
+            onClaimWeeklyTier={claimWeeklyTier}
           />
         )}
         {screen === 'hero' && (
@@ -190,7 +206,21 @@ function App() {
         {screen === 'exploration' && (
           <Exploration gameData={gameData} onAttemptMission={handleAttemptMission} />
         )}
-        <BottomNav screen={screen} onNavigate={(s) => { sfx.click(); setScreen(s); }} />
+        {screen === 'settings' && (
+          <Settings
+            gameData={gameData}
+            onBack={() => navigate(prevScreen === 'settings' ? 'camp' : prevScreen)}
+            onOpenFriends={() => navigate('friends')}
+            onResetGame={() => { resetGame(); setScreen('camp'); }}
+            onResetTutorial={resetTutorial}
+            onExport={exportSave}
+            onImport={importSave}
+          />
+        )}
+        {screen === 'friends' && (
+          <Friends onBack={() => navigate('settings')} />
+        )}
+        {showBottomNav && <BottomNav screen={screen} onNavigate={navigate} />}
       </div>
 
       {workoutOpen && (

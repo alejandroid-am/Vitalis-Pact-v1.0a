@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { motion } from 'framer-motion';
-import { Dumbbell, Zap, Heart, Flame, Coins, FlaskConical, AlertTriangle, Volume2, VolumeX } from 'lucide-react';
-import { isMuted, toggleMuted, onMuteChange, sfx } from '../utils/sounds';
+import { Dumbbell, Zap, Heart, Flame, Coins, FlaskConical, AlertTriangle, Settings as SettingsIcon } from 'lucide-react';
+import WeeklyChallenge from './WeeklyChallenge';
+import WorkoutHistory from './WorkoutHistory';
 
 const CAMP_BG = 'https://static.prod-images.emergentagent.com/jobs/ce456438-b97a-4a6a-aa70-aab136e72d1b/images/27ecd094631a8ac3ef331a753831926074b8c643e49113267ee8a55178495503.png';
 const WARRIOR_IMG = 'https://static.prod-images.emergentagent.com/jobs/ce456438-b97a-4a6a-aa70-aab136e72d1b/images/5ef76335b71bf68581dd0a74141fd29a97909f764e61788554de80b839d907b6.png';
@@ -13,13 +14,7 @@ const STAT_INFO = [
   { key: 'endurance', label: 'END', Icon: Heart },
 ];
 
-const Camp = ({ gameData, maxHP, isStiff, onLogWorkout, onUsePotion }) => {
-  const [muted, setMuted] = useState(isMuted());
-  useEffect(() => onMuteChange(setMuted), []);
-  const handleMuteToggle = () => {
-    toggleMuted();
-    if (isMuted() === false) sfx.click(); // play click only if we just unmuted
-  };
+const Camp = ({ gameData, maxHP, isStiff, weeklyInfo, onLogWorkout, onUsePotion, onOpenSettings, onClaimWeeklyTier }) => {
   const { name, characterClass, level, xp, xpMax, sp, stats, hp, gold, potions } = gameData;
   const xpPercent = Math.min(100, Math.round((xp / xpMax) * 100));
   const hpPercent = Math.min(100, Math.round((hp / maxHP) * 100));
@@ -35,16 +30,12 @@ const Camp = ({ gameData, maxHP, isStiff, onLogWorkout, onUsePotion }) => {
         <span className="font-pixel text-[#FF4500] text-[11px]">FITNESS QUEST</span>
         <div className="flex items-center gap-2">
           <button
-            data-testid="mute-toggle-btn"
-            onClick={handleMuteToggle}
-            aria-label={muted ? 'Unmute' : 'Mute'}
-            className={`w-7 h-7 border-2 flex items-center justify-center transition-all active:translate-y-[1px] ${
-              muted
-                ? 'border-zinc-700 text-zinc-500 hover:text-zinc-300'
-                : 'border-[#FF4500]/60 text-[#FF4500] bg-[#FF4500]/10 hover:bg-[#FF4500]/20'
-            }`}
+            data-testid="open-settings-btn"
+            onClick={onOpenSettings}
+            aria-label="Settings"
+            className="w-7 h-7 border-2 border-[#3F3F46] flex items-center justify-center text-zinc-300 hover:border-[#FF4500] hover:text-[#FF4500] transition-all active:translate-y-[1px]"
           >
-            {muted ? <VolumeX size={12} /> : <Volume2 size={12} />}
+            <SettingsIcon size={12} />
           </button>
           <div className="flex items-center gap-1 bg-[#27272A] border-2 border-[#FF8C00]/50 px-2 py-1">
             <Coins size={10} className="text-[#FF8C00]" />
@@ -199,6 +190,18 @@ const Camp = ({ gameData, maxHP, isStiff, onLogWorkout, onUsePotion }) => {
             </div>
           </motion.div>
         )}
+
+        {/* Weekly Challenge */}
+        {weeklyInfo && (
+          <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
+            <WeeklyChallenge info={weeklyInfo} onClaim={onClaimWeeklyTier} />
+          </motion.div>
+        )}
+
+        {/* Workout History */}
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.25 }}>
+          <WorkoutHistory history={gameData.workoutHistory || []} />
+        </motion.div>
       </div>
 
       {/* Log Workout Button */}
