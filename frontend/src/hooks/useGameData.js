@@ -111,6 +111,7 @@ export function useGameData() {
     setGameData(prev => ({
       ...prev,
       hp: Math.max(0, prev.hp - amount),
+      lastRegenAt: nowISO(),
     }));
   }, []);
 
@@ -175,12 +176,6 @@ export function useGameData() {
       } else if (!lastRegenAt) {
         lastRegenAt = nowISO();
         changed = true;
-      } else if (hp >= max) {
-        // Reset regen marker when full so accumulation doesn't dump on first hit
-        if (lastRegenAt !== nowISO()) {
-          lastRegenAt = nowISO();
-          changed = true;
-        }
       }
 
       return changed ? { ...prev, hp, lastRegenAt, lastDailyHealDate } : prev;

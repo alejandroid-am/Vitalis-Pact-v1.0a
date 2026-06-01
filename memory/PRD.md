@@ -96,11 +96,60 @@ A fitness app powered by RPG mechanics. The user flow is:
 - V5: Full ARPG movement on mission map (incremental Option C) + Monster Hunter mission loops
 - V6: Season Pass monetization + Weekly/Seasonal Challenges
 
+## Implemented - V3 (Feb 2026) — Persistent HP & Economy/Market
+
+### Persistent HP & Recovery System
+- HP now persists across battles via `gameData.hp` in LocalStorage (no auto-heal at combat start)
+- HP max scales with endurance: 10 base + 5 per END point
+- Passive regen: 10% of max HP per hour (computed from `lastRegenAt` timestamp)
+- Daily midnight full heal: triggered when `lastDailyHealDate` differs from today
+- Auto-applied on app load + every 60s via interval
+- "Too Weak To Fight" modal shown if attempting mission with HP=0
+- Enemy stats buffed +17% (HP & ATK) to compensate persistent HP, via `ENEMY_BUFF=1.17` in App.js
+
+### Economy / Market / Gacha Chest
+- New `Market` screen wired into BottomNav (4 tabs total: Camp, Hero, Market, Explore)
+- Gold (G) drops at end of combat: Tier I 15-20G, Tier II 18-25G, Tier III 22-30G
+- Shop catalog:
+  - Health Potion — 25G (restores 30% of max HP)
+  - Mystery Chest — 100G (Gacha with `navigator.vibrate([100,100,100,400])` haptic)
+  - Iron Adept Set (Tier I Common) — 250G (sell 75G)
+  - Steelborn Set (Tier II Epic) — 600G (sell 180G)
+- Mystery Chest drop rates: 60% Potion / 30% Common / 9% Epic / 1% Legendary
+- Resale at 30% of price (gear sell value)
+- Bag tab in Market shows potion count + gear with SELL buttons
+- POTION action in CombatModal (between ATK and FLEE) — heals 30% max HP, enemy gets free hit after
+- Use Potion from Camp and Hero screens too
+
+### Visual & UX
+- Gold pill (orange #FF8C00) in Camp, Hero, and Market headers
+- HP bar with low-HP red state (<40%) in Camp and Hero
+- Screen-shake animation on enemy hit (framer-motion)
+- Chest reveal modal with tier-coloured glow (legendary has shine sweep)
+- Toast notifications for purchases/sales in Market
+
+### Updated Data Model
+```json
+{
+  "name": "string",
+  "characterClass": "warrior|rogue",
+  "level": 1, "xp": 0, "xpMax": 100, "sp": 0,
+  "stats": { "strength": 1, "agility": 1, "endurance": 1 },
+  "inventory": [],            // quest trophies (read-only)
+  "hp": 15,                   // persistent current HP
+  "gold": 0,
+  "potions": 0,
+  "gear": [{ "id", "name", "tier", "sellValue" }],
+  "lastRegenAt": "ISO",
+  "lastDailyHealDate": "YYYY-MM-DD"
+}
+```
+
 ## Prioritized Backlog
 
-### P0 - Critical for next iteration
-- [ ] Fill empty space on Camp screen with recent workout history
-- [ ] Add reset game / new character option
+### P0 - Next Sprint (remaining V3 features)
+- [ ] **Stiffness Debuff (Entumecido)**: track `lastWorkoutTimestamp`; if >48h inactive apply -30% dmg dealt / +30% dmg taken; visible status on Hero; cured on next workout
+- [ ] **Special Dynamic Events**: highlighted section atop Exploration; enemies dynamically scale to PlayerStats+20%; reward 75-100G + epic drops; intensified screen-shake on critical hits
 
 ### P1 - High Value
 - [ ] Workout history log (last 5 sessions on Camp screen)
