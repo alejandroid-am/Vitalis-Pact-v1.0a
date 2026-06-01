@@ -1,0 +1,120 @@
+{
+  "project_name": "Fitness Quest",
+  "app_type": "mobile_web_app",
+  "theme_archetype": {
+    "theme": "dark",
+    "archetype": "Archetype 2 (Performance Pro) + Archetype 7 (Gaming/Electric)",
+    "description": "Tactical RPG Dark: A heavy, immersive dark mode focusing on forge, iron, and fire tones. Incorporates 16-bit retro UI patterns with modern mobile-first constraints."
+  },
+  "typography": {
+    "heading_font": "Press Start 2P",
+    "body_font": "IBM Plex Sans",
+    "font_imports": [
+      "@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=Press+Start+2P&display=swap');"
+    ],
+    "rules": {
+      "h1": "font-['Press_Start_2P'] text-xl md:text-2xl tracking-tight leading-snug",
+      "h2": "font-['Press_Start_2P'] text-lg md:text-xl tracking-tight leading-snug",
+      "h3": "font-['Press_Start_2P'] text-base md:text-lg",
+      "body": "font-['IBM_Plex_Sans'] text-base text-zinc-300 leading-relaxed",
+      "labels": "font-['Press_Start_2P'] text-[10px] tracking-wider uppercase text-zinc-400"
+    }
+  },
+  "colors": {
+    "background": {
+      "base": "bg-[#09090B]",
+      "surface": "bg-[#18181B]",
+      "surface_elevated": "bg-[#27272A]"
+    },
+    "text": {
+      "primary": "text-zinc-100",
+      "secondary": "text-zinc-400",
+      "accent": "text-[#FF4500]",
+      "success": "text-green-500",
+      "warning": "text-[#FBBF24]"
+    },
+    "border": {
+      "steel": "border-[#52525B]",
+      "iron": "border-[#3F3F46]",
+      "highlight": "border-[#FF4500]"
+    },
+    "accent": {
+      "primary": "bg-[#FF4500]",
+      "primary_hover": "hover:bg-[#DC2626]",
+      "xp_bar": "bg-gradient-to-r from-[#DC2626] to-[#FF4500]"
+    }
+  },
+  "layout_and_spacing": {
+    "mobile_first_wrapper": "max-w-md mx-auto min-h-screen bg-[#09090B] relative pb-20 shadow-2xl overflow-hidden",
+    "card": "bg-[#18181B] border-2 border-[#3F3F46] rounded-none p-4 shadow-[4px_4px_0px_0px_rgba(0,0,0,0.5)] transition-transform",
+    "spacing": {
+      "section_gap": "gap-6",
+      "component_gap": "gap-4"
+    }
+  },
+  "components": {
+    "button": {
+      "primary": "bg-[#FF4500] hover:bg-[#DC2626] text-white font-['Press_Start_2P'] text-xs py-4 px-6 border-2 border-[#FF8C00] hover:border-[#FF4500] rounded-none shadow-[inset_-2px_-2px_0px_rgba(0,0,0,0.4),_4px_4px_0px_rgba(0,0,0,1)] active:translate-y-[2px] active:translate-x-[2px] active:shadow-[inset_-1px_-1px_0px_rgba(0,0,0,0.4),_1px_1px_0px_rgba(0,0,0,1)] transition-all",
+      "secondary": "bg-[#27272A] hover:bg-[#3F3F46] text-zinc-100 font-['Press_Start_2P'] text-xs py-4 px-6 border-2 border-[#52525B] shadow-[inset_-2px_-2px_0px_rgba(0,0,0,0.4),_4px_4px_0px_rgba(0,0,0,1)] active:translate-y-[2px] active:translate-x-[2px] transition-all",
+      "upgrade_btn": "bg-[#18181B] border-2 border-[#52525B] text-[#FF4500] w-8 h-8 flex items-center justify-center font-['Press_Start_2P'] hover:bg-[#27272A] active:scale-95"
+    },
+    "input": {
+      "base": "bg-[#09090B] border-2 border-[#52525B] text-zinc-100 font-['IBM_Plex_Sans'] px-4 py-3 focus:outline-none focus:border-[#FF4500] placeholder-zinc-600 rounded-none w-full"
+    },
+    "progress_bar": {
+      "container": "h-6 bg-[#09090B] border-2 border-[#3F3F46] w-full rounded-none overflow-hidden relative",
+      "fill": "h-full bg-gradient-to-r from-[#DC2626] to-[#FF4500] transition-all duration-500 ease-out shadow-[inset_0_2px_4px_rgba(255,255,255,0.3)]"
+    },
+    "bottom_nav": {
+      "container": "fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-[#18181B] border-t-2 border-[#3F3F46] flex justify-around items-center h-16 z-50",
+      "item": "flex flex-col items-center justify-center w-full h-full text-zinc-500 hover:text-zinc-300",
+      "item_active": "text-[#FF4500] border-t-2 border-[#FF4500] bg-[#27272A]"
+    },
+    "modals": {
+      "overlay": "fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4",
+      "content": "bg-[#18181B] border-4 border-[#3F3F46] w-full max-w-sm p-6 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] relative"
+    }
+  },
+  "media": {
+    "images": [
+      {
+        "slug_name": "icon_warrior",
+        "url": "https://static.prod-images.emergentagent.com/jobs/ce456438-b97a-4a6a-aa70-aab136e72d1b/images/5ef76335b71bf68581dd0a74141fd29a97909f764e61788554de80b839d907b6.png",
+        "description": "Warrior character class selection icon. Use in Onboarding screen."
+      },
+      {
+        "slug_name": "icon_rogue",
+        "url": "https://static.prod-images.emergentagent.com/jobs/ce456438-b97a-4a6a-aa70-aab136e72d1b/images/98e85895129f1cdc43fbac30a406cec77cb7fcf8ce4e0a6f7bdde9dc5cff7cd4.png",
+        "description": "Rogue character class selection icon. Use in Onboarding screen."
+      },
+      {
+        "slug_name": "bg_camp",
+        "url": "https://static.prod-images.emergentagent.com/jobs/ce456438-b97a-4a6a-aa70-aab136e72d1b/images/27ecd094631a8ac3ef331a753831926074b8c643e49113267ee8a55178495503.png",
+        "description": "Camp resting area background. Use as an ambient hero background image in the Camp screen."
+      },
+      {
+        "slug_name": "bg_emberwood",
+        "url": "https://static.prod-images.emergentagent.com/jobs/ce456438-b97a-4a6a-aa70-aab136e72d1b/images/52043d7765fccc093c5e576c95892313cd222f9a5df0777bf9d636af15f273ac.png",
+        "description": "Emberwood Forest zone background. Use in Exploration Map screen."
+      },
+      {
+        "slug_name": "bg_ironpeak",
+        "url": "https://static.prod-images.emergentagent.com/jobs/ce456438-b97a-4a6a-aa70-aab136e72d1b/images/2cde659bc038e5359c33659d4d7533568d6fe394b504b5e3dbfcdc6e79e3346a.png",
+        "description": "Ironpeak Mountain zone background. Use in Exploration Map screen."
+      },
+      {
+        "slug_name": "bg_ashveil",
+        "url": "https://static.prod-images.emergentagent.com/jobs/ce456438-b97a-4a6a-aa70-aab136e72d1b/images/cf5eda531fe0f934111d64e88c6702ff9482125964b7201ee2578d6b84a633b7.png",
+        "description": "Ashveil Desert zone background. Use in Exploration Map screen."
+      }
+    ]
+  },
+  "instructions_to_main_agent": [
+    "No Backend: Everything must be stored in browser LocalStorage. Create a custom React hook (e.g. useGameData) to manage character state, XP, levels, and unlocked zones.",
+    "Mobile-first strictly: Render the app within a max-w-md centered container on large screens to maintain the app feel. The Bottom Navigation must stick to this container, not the full screen width.",
+    "Data-testid requirement: EVERY interactive element (buttons, inputs, navigation items, stat upgrades) MUST have a kebab-case data-testid (e.g., data-testid='log-workout-btn').",
+    "Font Loading: You MUST inject the Google Fonts link into the index.html or load it globally. Extend Tailwind's font-family to include 'Press Start 2P' and 'IBM Plex Sans'.",
+    "Component Overrides: Shadcn is likely too clean for this. You must override Shadcn primitive classes with the blocky, 16-bit neumorphic styles provided in this JSON.",
+    "Images handling: For zone backgrounds, apply a dark overlay (bg-black/60) so text stays legible on top."
+  ]
+}
