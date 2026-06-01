@@ -72,9 +72,13 @@ function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOnboarding, tutorialOpen]);
 
+  const MAIN_SCREENS = ['camp', 'hero', 'market', 'exploration'];
+
   const navigate = (s) => {
     sfx.click();
-    setPrevScreen(screen);
+    // Only update prevScreen when leaving a MAIN screen — so Settings/Friends
+    // back-buttons always return to the last main tab, not bounce between themselves.
+    if (MAIN_SCREENS.includes(screen)) setPrevScreen(screen);
     setScreen(s);
   };
 
@@ -151,10 +155,8 @@ function App() {
   const handleCombatDefeat = () => setActiveMission(null);
 
   const handleOpenBag = () => {
-    sfx.click();
     setMarketTab('bag');
-    setPrevScreen(screen);
-    setScreen('market');
+    navigate('market');
   };
 
   if (isOnboarding) {
@@ -209,9 +211,9 @@ function App() {
         {screen === 'settings' && (
           <Settings
             gameData={gameData}
-            onBack={() => navigate(prevScreen === 'settings' ? 'camp' : prevScreen)}
+            onBack={() => navigate(prevScreen)}
             onOpenFriends={() => navigate('friends')}
-            onResetGame={() => { resetGame(); setScreen('camp'); }}
+            onResetGame={() => { resetGame(); setScreen('camp'); setPrevScreen('camp'); }}
             onResetTutorial={resetTutorial}
             onExport={exportSave}
             onImport={importSave}

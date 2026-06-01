@@ -238,10 +238,57 @@ Each gear entry now also includes: `{ slot: 'weapon'|'armor'|'trinket', bonus: {
 
 ## Prioritized Backlog
 
-### P0 - Next Sprint
-- [ ] Weekly Challenges (large weekly target → Legendary Chest)
-- [ ] Friends system + visibility of achievements + leaderboard
-- [ ] Workout History in Camp (last 5 sessions)
+## Implemented - V3.3 (Feb 2026) — Weekly Challenges, History, Settings, Friends Prototype
+
+### Weekly Challenge System
+- 1 challenge per ISO week with 3 tiers (Bronze/Silver/Gold)
+- 5 challenge templates rotate deterministically: Iron Will (minutes), Bloodletter (kills), Treasure Run (gold), Lucky Streak (chests), Potion Master (potions)
+- Bronze 100G · Silver Mystery Chest · Gold Legendary gear guaranteed
+- Live countdown to next reset (UTC week boundary)
+- Progress bar with tier markers; CLAIM buttons unlock as thresholds are hit
+- Tracked via `gameData.weekly` with auto-reset on week change (via `ensureWeekly` helper)
+
+### Workout History
+- New `workoutHistory` array in gameData (last 30 entries cap)
+- Camp screen renders last 5 sessions with date (Today/Yesterday/MMM dd), type (STR/CARDIO/MOBILITY), minutes, XP gained, +20% bonus badge for class-bonus matches
+
+### Settings Screen (full)
+- Accessed via gear icon in Camp header (replaces previous mute toggle)
+- Sections: Feedback (sound/haptic switches + theme lock), Lifetime Stats (6 chips), Save Data (export JSON, import JSON, reset tutorial, reset game), Community (Friends preview), About (version, privacy, terms)
+- Reset Game flow: confirmation modal with case-insensitive 'RESET' input (accepts 'reset', 'Reset', 'RESET')
+- BottomNav hidden on Settings/Friends screens (back-button navigation)
+- Haptic feedback toggle persisted to `fq_haptic_muted`, respected by `Market` chest open vibrate
+
+### Friends Prototype
+- Static demo screen showing 5 mock friends ranked by total minutes
+- Class icons, online dots, level, streak, minutes, gold, achievement counts
+- Banner "PROTOTYPE PREVIEW — backend coming soon"
+
+### Data Model Additions
+```json
+{
+  "workoutHistory": [{ "id", "date", "minutes", "type", "xp", "bonus" }],
+  "weekly": {
+    "weekKey": "YYYY-Www",
+    "challengeId": "iron_will|bloodletter|...",
+    "progress": { "minutes", "enemiesDefeated", "goldEarned", "chestsOpened", "potionsDrunk" },
+    "claimedTiers": { "bronze", "silver", "gold" }
+  }
+}
+```
+
+### Bug Fixes
+- Settings ↔ Friends navigation loop: only main-tab screens (camp/hero/market/exploration) are tracked as `prevScreen`
+- Nested `<button>` HTML warning in Settings rows with Switch right-slot: Row renders as `<div role="button">` when right-slot is interactive
+
+## Prioritized Backlog
+
+### P0 - Next Sprint (P2 polish)
+- [ ] Confetti + modal on Achievement tier unlock ("🥇 GOLD UNLOCKED")
+- [ ] Floating damage/heal numbers in combat (+9 / -5 floating up)
+- [ ] More Special Events (expand from 4 to 12 for weekly variety)
+- [ ] Share progress (canvas screenshot export of character card)
+- [ ] Repeatable mission narrative variants
 
 ### P1 - High Value
 - [ ] Workout history log (last 5 sessions on Camp screen)

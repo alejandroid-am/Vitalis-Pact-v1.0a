@@ -9,23 +9,35 @@ import { isHapticMuted, toggleHapticMuted, onHapticChange, vibrate } from '../ut
 
 const APP_VERSION = '1.0.0';
 
-const Row = ({ icon: Icon, label, hint, right, onClick, testId, disabled }) => (
-  <button
-    data-testid={testId}
-    onClick={onClick}
-    disabled={disabled || !onClick}
-    className={`w-full bg-[#18181B] border-2 border-[#3F3F46] p-3 flex items-center gap-3 transition-all text-left ${
-      onClick && !disabled ? 'hover:border-[#FF4500]/40 active:translate-y-[1px]' : ''
-    } ${disabled ? 'opacity-50' : ''}`}
-  >
-    <Icon size={16} className="text-zinc-400 flex-shrink-0" />
-    <div className="flex-1 min-w-0">
-      <p className="font-pixel text-[9px] text-zinc-100">{label}</p>
-      {hint && <p className="font-plex text-[10px] text-zinc-500 leading-tight mt-0.5">{hint}</p>}
-    </div>
-    {right}
-  </button>
-);
+const Row = ({ icon: Icon, label, hint, right, onClick, testId, disabled }) => {
+  // When `right` is an interactive control (e.g. Switch), render Row as a div with role=button
+  // to avoid invalid <button> inside <button> nesting.
+  const interactiveRight = !!right && right.type !== Lock;
+  const Comp = interactiveRight ? 'div' : 'button';
+  const commonProps = {
+    'data-testid': testId,
+    onClick: (e) => { if (!disabled && onClick) onClick(e); },
+    className: `w-full bg-[#18181B] border-2 border-[#3F3F46] p-3 flex items-center gap-3 transition-all text-left ${
+      onClick && !disabled ? 'hover:border-[#FF4500]/40 active:translate-y-[1px] cursor-pointer' : ''
+    } ${disabled ? 'opacity-50' : ''}`,
+  };
+  if (!interactiveRight) {
+    commonProps.disabled = disabled || !onClick;
+  } else {
+    commonProps.role = 'button';
+    commonProps.tabIndex = onClick && !disabled ? 0 : -1;
+  }
+  return (
+    <Comp {...commonProps}>
+      <Icon size={16} className="text-zinc-400 flex-shrink-0" />
+      <div className="flex-1 min-w-0">
+        <p className="font-pixel text-[9px] text-zinc-100">{label}</p>
+        {hint && <p className="font-plex text-[10px] text-zinc-500 leading-tight mt-0.5">{hint}</p>}
+      </div>
+      {right}
+    </Comp>
+  );
+};
 
 const Switch = ({ on, onClick, testId }) => (
   <button

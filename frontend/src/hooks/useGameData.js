@@ -715,6 +715,14 @@ export function useGameData() {
     return () => clearInterval(recoveryTimerRef.current);
   }, [applyRecovery]);
 
+  // Ensure weekly slice is up-to-date on mount and at week boundaries.
+  useEffect(() => {
+    setGameData(prev => {
+      const fresh = ensureWeekly(prev.weekly);
+      return fresh === prev.weekly ? prev : { ...prev, weekly: fresh };
+    });
+  }, []);
+
   return {
     gameData,
     updateGameData,
