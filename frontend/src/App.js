@@ -223,14 +223,14 @@ function App() {
 
   return (
     <div className="min-h-screen bg-[#09090B]">
-      <div className={`max-w-md mx-auto min-h-screen relative ${showBottomNav ? 'pb-16' : ''}`}>
+      <div className={`max-w-md mx-auto min-h-screen relative ${showBottomNav ? 'pb-20' : ''}`}>
         {screen === 'camp' && (
           <Camp
             gameData={gameData}
             maxHP={getMaxHP()}
             isStiff={isStiff()}
             weeklyInfo={weeklyInfo}
-            onLogWorkout={() => { sfx.click(); setWorkoutOpen(true); }}
+
             onUsePotion={() => { const ok = drinkPotion(); if (ok) sfx.potion(); return ok; }}
             onOpenSettings={() => navigate('settings')}
             onClaimWeeklyTier={claimWeeklyTier}
@@ -277,7 +277,13 @@ function App() {
         {screen === 'friends' && (
           <Friends onBack={() => navigate('settings')} />
         )}
-        {showBottomNav && <BottomNav screen={screen} onNavigate={navigate} />}
+        {showBottomNav && (
+          <BottomNav
+            screen={screen}
+            onNavigate={navigate}
+            onOpenWorkout={() => { sfx.click(); setWorkoutOpen(true); }}
+          />
+        )}
       </div>
 
       {workoutOpen && (

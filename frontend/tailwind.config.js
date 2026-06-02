@@ -49,3 +49,4 @@ module.exports = {
   },
   plugins: [require("tailwindcss-animate")],
 };
+// Note: additional custom keyframes are in App.css

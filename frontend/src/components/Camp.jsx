@@ -1,219 +1,325 @@
-import React from 'react';
-import { motion } from 'framer-motion';
-import { Dumbbell, Zap, Heart, Flame, Coins, FlaskConical, AlertTriangle, Settings as SettingsIcon } from 'lucide-react';
+import React, { useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import {
+  Dumbbell, Zap, Heart, Flame, Coins, FlaskConical,
+  AlertTriangle, Settings as SettingsIcon, ChevronDown, ChevronUp, Swords,
+} from 'lucide-react';
 import WeeklyChallenge from './WeeklyChallenge';
 import WorkoutHistory from './WorkoutHistory';
-
-const CAMP_BG = 'https://static.prod-images.emergentagent.com/jobs/ce456438-b97a-4a6a-aa70-aab136e72d1b/images/27ecd094631a8ac3ef331a753831926074b8c643e49113267ee8a55178495503.png';
-const WARRIOR_IMG = 'https://static.prod-images.emergentagent.com/jobs/ce456438-b97a-4a6a-aa70-aab136e72d1b/images/5ef76335b71bf68581dd0a74141fd29a97909f764e61788554de80b839d907b6.png';
-const ROGUE_IMG = 'https://static.prod-images.emergentagent.com/jobs/ce456438-b97a-4a6a-aa70-aab136e72d1b/images/98e85895129f1cdc43fbac30a406cec77cb7fcf8ce4e0a6f7bdde9dc5cff7cd4.png';
+import HeroSprite from './HeroSprite';
 
 const STAT_INFO = [
-  { key: 'strength', label: 'STR', Icon: Dumbbell },
-  { key: 'agility', label: 'AGI', Icon: Zap },
-  { key: 'endurance', label: 'END', Icon: Heart },
+  { key: 'strength',  label: 'STR', Icon: Dumbbell, color: '#F97316' },
+  { key: 'agility',   label: 'AGI', Icon: Zap,      color: '#EAB308' },
+  { key: 'endurance', label: 'END', Icon: Heart,    color: '#EF4444' },
 ];
+
+const CLASS_LABEL = { warrior: 'WARRIOR', rogue: 'ROGUE', mage: 'MAGE', ranger: 'RANGER' };
+const CLASS_BONUS = {
+  warrior: '+20% XP Strength',
+  rogue:   '+20% XP Cardio',
+  mage:    '+20% XP Flexibility',
+  ranger:  '+20% XP Outdoor',
+};
+const CLASS_COLOR = {
+  warrior: '#F97316',
+  rogue:   '#A78BFA',
+  mage:    '#60A5FA',
+  ranger:  '#4ADE80',
+};
 
 const Camp = ({ gameData, maxHP, isStiff, weeklyInfo, onLogWorkout, onUsePotion, onOpenSettings, onClaimWeeklyTier }) => {
   const { name, characterClass, level, xp, xpMax, sp, stats, hp, gold, potions } = gameData;
-  const xpPercent = Math.min(100, Math.round((xp / xpMax) * 100));
-  const hpPercent = Math.min(100, Math.round((hp / maxHP) * 100));
-  const hpLow = hp < maxHP * 0.4;
-  const classImg = characterClass === 'warrior' ? WARRIOR_IMG : ROGUE_IMG;
-  const classLabel = characterClass === 'warrior' ? 'WARRIOR' : 'ROGUE';
-  const classBonus = characterClass === 'warrior' ? '+20% XP on Strength Training' : '+20% XP on Cardio';
+  const [historyOpen, setHistoryOpen] = useState(false);
+
+  const xpPercent  = Math.min(100, Math.round((xp / xpMax) * 100));
+  const hpPercent  = Math.min(100, Math.round((hp / maxHP) * 100));
+  const hpLow      = hp < maxHP * 0.4;
+  const classColor = CLASS_COLOR[characterClass] || '#FF4500';
+  const classLabel = CLASS_LABEL[characterClass] || 'HERO';
+  const classBonus = CLASS_BONUS[characterClass] || '+20% XP';
 
   return (
-    <div className="bg-[#09090B] min-h-[calc(100vh-4rem)] flex flex-col">
-      {/* Header */}
-      <div className="bg-[#18181B] border-b-2 border-[#3F3F46] px-4 py-3 flex items-center justify-between">
-        <span className="font-pixel text-[#FF4500] text-[11px]">VITALIS PACT</span>
+    <div className="bg-[#060608] min-h-[calc(100vh-4rem)] flex flex-col">
+
+      {/* ─── Header ─── */}
+      <div
+        className="px-4 py-3 flex items-center justify-between border-b border-[#1a1a22]"
+        style={{ background: 'rgba(10,10,14,0.95)' }}
+      >
         <div className="flex items-center gap-2">
+          <span className="font-pixel text-[10px]" style={{ color: '#FF4500', letterSpacing: '0.12em' }}>
+            VITALIS PACT
+          </span>
+          {sp > 0 && (
+            <motion.span
+              animate={{ opacity: [1, 0.5, 1] }}
+              transition={{ duration: 1.2, repeat: Infinity }}
+              className="font-pixel text-[7px] px-2 py-0.5 border"
+              style={{ color: '#FF4500', borderColor: 'rgba(255,69,0,0.5)' }}
+            >
+              {sp} SP!
+            </motion.span>
+          )}
+        </div>
+        <div className="flex items-center gap-2">
+          {/* Gold */}
+          <div className="flex items-center gap-1 px-2 py-1 border" style={{ background: 'rgba(255,140,0,0.08)', borderColor: 'rgba(255,140,0,0.3)' }}>
+            <Coins size={10} style={{ color: '#FF8C00' }} />
+            <span data-testid="camp-gold-display" className="font-pixel text-[8px]" style={{ color: '#FF8C00' }}>
+              {gold}G
+            </span>
+          </div>
           <button
             data-testid="open-settings-btn"
             onClick={onOpenSettings}
-            aria-label="Settings"
-            className="w-7 h-7 border-2 border-[#3F3F46] flex items-center justify-center text-zinc-300 hover:border-[#FF4500] hover:text-[#FF4500] transition-all active:translate-y-[1px]"
+            className="w-7 h-7 border flex items-center justify-center transition-all"
+            style={{ borderColor: '#2a2a32', color: '#71717A' }}
           >
             <SettingsIcon size={12} />
           </button>
-          <div className="flex items-center gap-1 bg-[#27272A] border-2 border-[#FF8C00]/50 px-2 py-1">
-            <Coins size={10} className="text-[#FF8C00]" />
-            <span data-testid="camp-gold-display" className="font-pixel text-[9px] text-[#FF8C00]">{gold}G</span>
-          </div>
-          {sp > 0 && (
-            <span className="font-pixel text-[8px] text-[#FF4500] animate-pulse-glow border border-[#FF4500]/50 px-2 py-1">
-              {sp} SP
-            </span>
-          )}
-          <span className="font-pixel text-[9px] text-zinc-500">CAMP</span>
         </div>
       </div>
 
-      <div className="flex-1 p-4 pb-2 space-y-4">
-        {/* Character Banner */}
+      <div className="flex-1 p-3 space-y-3 overflow-y-auto" style={{ paddingBottom: '5rem' }}>
+
+        {/* ─── Hero Card ─── */}
         <motion.div
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4 }}
-          className="relative overflow-hidden border-2 border-[#3F3F46] shadow-[4px_4px_0px_0px_rgba(0,0,0,0.8)]"
+          className="relative overflow-hidden border-2 border-glow-red"
+          style={{
+            borderColor: 'rgba(255,69,0,0.3)',
+            background: 'linear-gradient(135deg, #0d0d12 0%, #12121a 60%, #0f0a0a 100%)',
+          }}
         >
+          {/* Scanline overlay */}
+          <div className="scanlines absolute inset-0 pointer-events-none" style={{ zIndex: 1 }} />
+
+          {/* Background pixel pattern */}
           <div
-            className="absolute inset-0 bg-cover bg-center"
-            style={{ backgroundImage: `url(${CAMP_BG})` }}
+            className="absolute inset-0 opacity-10"
+            style={{
+              backgroundImage: `radial-gradient(circle, ${classColor} 1px, transparent 1px)`,
+              backgroundSize: '20px 20px',
+            }}
           />
-          <div className="absolute inset-0 bg-black/72" />
-          <div className="relative p-4">
-            {/* Character info row */}
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-16 h-16 border-2 border-[#52525B] bg-[#09090B]/60 flex items-center justify-center flex-shrink-0">
-                <img src={classImg} alt={classLabel} className="w-12 h-12 object-contain" />
+
+          <div className="relative p-4" style={{ zIndex: 2 }}>
+            <div className="flex items-end gap-4">
+              {/* Sprite */}
+              <div className="flex-shrink-0 flex flex-col items-center">
+                <div
+                  className="w-20 h-20 flex items-center justify-center relative"
+                  style={{
+                    background: 'rgba(0,0,0,0.5)',
+                    border: `2px solid ${classColor}30`,
+                  }}
+                >
+                  {/* Glow under sprite */}
+                  <div
+                    className="absolute bottom-0 left-1/2 -translate-x-1/2 w-12 h-3 rounded-full opacity-40"
+                    style={{ background: classColor, filter: 'blur(8px)' }}
+                  />
+                  <HeroSprite characterClass={characterClass} size={56} animate />
+                </div>
+                {/* Class badge */}
+                <div
+                  className="font-pixel text-[6px] px-2 py-0.5 mt-1"
+                  style={{
+                    background: `${classColor}20`,
+                    color: classColor,
+                    border: `1px solid ${classColor}50`,
+                  }}
+                >
+                  {classLabel}
+                </div>
               </div>
+
+              {/* Info */}
               <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="font-pixel text-[8px] text-[#FF4500] border border-[#FF4500]/50 px-1.5 py-0.5">{classLabel}</span>
-                </div>
-                <p className="font-pixel text-sm text-zinc-100 truncate">{name}</p>
-              </div>
-              <div className="text-right flex-shrink-0">
-                <p className="font-pixel text-[8px] text-zinc-500 mb-0.5">LEVEL</p>
-                <p data-testid="player-level" className="font-pixel text-3xl text-[#FF4500] leading-none">{level}</p>
-              </div>
-            </div>
+                <p className="font-pixel text-sm text-zinc-100 truncate mb-1">{name}</p>
 
-            {/* XP Bar */}
-            <div>
-              <div className="flex justify-between mb-1.5">
-                <div className="flex items-center gap-1">
-                  <Flame size={10} className="text-[#FF4500]" />
-                  <span className="font-pixel text-[8px] text-zinc-400">EXP</span>
-                </div>
-                <span data-testid="xp-display" className="font-pixel text-[8px] text-zinc-400">
-                  {xp} / {xpMax}
-                </span>
-              </div>
-              <div className="h-7 bg-[#09090B] border-2 border-[#3F3F46] w-full overflow-hidden relative">
-                <motion.div
-                  className="h-full bg-gradient-to-r from-[#DC2626] to-[#FF4500]"
-                  initial={{ width: 0 }}
-                  animate={{ width: `${xpPercent}%` }}
-                  transition={{ duration: 0.7, ease: 'easeOut' }}
-                />
-                <span className="absolute inset-0 flex items-center justify-center font-pixel text-[8px] text-white/90">
-                  {xpPercent}%
-                </span>
-              </div>
-            </div>
-
-            {/* HP Bar */}
-            <div className="mt-3">
-              <div className="flex justify-between mb-1.5">
-                <div className="flex items-center gap-1">
-                  <Heart size={10} className={hpLow ? 'text-red-400' : 'text-green-400'} />
-                  <span className="font-pixel text-[8px] text-zinc-400">HP</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <button
-                    data-testid="camp-use-potion-btn"
-                    onClick={onUsePotion}
-                    disabled={potions <= 0 || hp >= maxHP}
-                    className={`font-pixel text-[7px] px-1.5 py-0.5 border transition-all flex items-center gap-1 ${
-                      potions > 0 && hp < maxHP
-                        ? 'border-emerald-500/60 text-emerald-300 hover:bg-emerald-500/10 active:translate-y-[1px]'
-                        : 'border-[#3F3F46] text-zinc-600 cursor-not-allowed'
-                    }`}
-                  >
-                    <FlaskConical size={8} />
-                    x{potions}
-                  </button>
-                  <span data-testid="camp-hp-display" className={`font-pixel text-[8px] ${hpLow ? 'text-red-400' : 'text-zinc-400'}`}>
-                    {hp} / {maxHP}
+                {/* Level */}
+                <div className="flex items-baseline gap-2 mb-3">
+                  <span className="font-pixel text-[7px] text-zinc-500">LV</span>
+                  <span data-testid="player-level" className="font-pixel text-4xl leading-none" style={{ color: classColor }}>
+                    {level}
                   </span>
+                  <span className="font-pixel text-[7px] text-zinc-600">{classBonus}</span>
                 </div>
-              </div>
-              <div className="h-5 bg-[#09090B] border-2 border-[#3F3F46] w-full overflow-hidden relative">
-                <motion.div
-                  className={`h-full bg-gradient-to-r ${hpLow ? 'from-red-800 to-red-500' : 'from-green-800 to-green-400'}`}
-                  initial={{ width: 0 }}
-                  animate={{ width: `${hpPercent}%` }}
-                  transition={{ duration: 0.5, ease: 'easeOut' }}
-                />
-                <span className="absolute inset-0 flex items-center justify-center font-pixel text-[7px] text-white/90">
-                  {hpPercent}%
-                </span>
+
+                {/* XP Bar */}
+                <div className="mb-2">
+                  <div className="flex items-center justify-between mb-1">
+                    <div className="flex items-center gap-1">
+                      <Flame size={9} style={{ color: '#FF4500' }} />
+                      <span className="font-pixel text-[7px] text-zinc-500">EXP</span>
+                    </div>
+                    <span data-testid="xp-display" className="font-pixel text-[7px] text-zinc-500">
+                      {xp}/{xpMax}
+                    </span>
+                  </div>
+                  <div className="h-4 w-full overflow-hidden border border-[#1a1a22]" style={{ background: '#09090d' }}>
+                    <motion.div
+                      className="h-full xp-shimmer"
+                      initial={{ width: 0 }}
+                      animate={{ width: `${xpPercent}%` }}
+                      transition={{ duration: 0.8, ease: 'easeOut' }}
+                    />
+                  </div>
+                </div>
+
+                {/* HP Bar */}
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <div className="flex items-center gap-1">
+                      <Heart size={9} style={{ color: hpLow ? '#EF4444' : '#4ADE80' }} />
+                      <span className="font-pixel text-[7px] text-zinc-500">HP</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        data-testid="camp-use-potion-btn"
+                        onClick={onUsePotion}
+                        disabled={potions <= 0 || hp >= maxHP}
+                        className="font-pixel text-[6px] px-1.5 py-0.5 border flex items-center gap-1 transition-all"
+                        style={
+                          potions > 0 && hp < maxHP
+                            ? { borderColor: '#4ADE80', color: '#4ADE80' }
+                            : { borderColor: '#27272A', color: '#3F3F46', cursor: 'not-allowed' }
+                        }
+                      >
+                        <FlaskConical size={7} /> ×{potions}
+                      </button>
+                      <span
+                        data-testid="camp-hp-display"
+                        className="font-pixel text-[7px]"
+                        style={{ color: hpLow ? '#EF4444' : '#71717A' }}
+                      >
+                        {hp}/{maxHP}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="h-3 w-full overflow-hidden border border-[#1a1a22]" style={{ background: '#09090d' }}>
+                    <motion.div
+                      className={`h-full bg-gradient-to-r ${hpLow ? 'from-red-900 to-red-500' : 'from-green-900 to-green-500'}`}
+                      initial={{ width: 0 }}
+                      animate={{ width: `${hpPercent}%` }}
+                      transition={{ duration: 0.5 }}
+                    />
+                  </div>
+                </div>
               </div>
             </div>
           </div>
         </motion.div>
 
-        {/* Stats Row */}
+        {/* ─── RUSTED Warning ─── */}
+        <AnimatePresence>
+          {isStiff && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              className="border-2 flex items-center gap-3 p-3 overflow-hidden"
+              style={{
+                background: 'rgba(127,29,29,0.2)',
+                borderColor: 'rgba(239,68,68,0.5)',
+              }}
+            >
+              <AlertTriangle size={18} className="text-red-400 flex-shrink-0 rusted-icon" />
+              <div>
+                <p data-testid="camp-rusted-banner" className="font-pixel text-[8px] text-red-400 mb-0.5">
+                  ⚠ RUSTED
+                </p>
+                <p className="font-plex text-[11px] text-red-200/80 leading-snug">
+                  Inactive 48h+. Blade dulls — train to forge back.
+                </p>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* ─── Stats Row ─── */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ delay: 0.15 }}
+          transition={{ delay: 0.12 }}
           className="grid grid-cols-3 gap-2"
         >
-          {STAT_INFO.map(({ key, label, Icon }) => (
+          {STAT_INFO.map(({ key, label, Icon, color }) => (
             <div
               key={key}
               data-testid={`stat-${key}`}
-              className="bg-[#18181B] border-2 border-[#3F3F46] p-3 text-center"
+              className="p-3 text-center border"
+              style={{ background: '#0d0d12', borderColor: '#1a1a22' }}
             >
-              <Icon size={14} className="text-[#FF4500] mx-auto mb-1" />
-              <p className="font-pixel text-[8px] text-zinc-500 mb-1">{label}</p>
+              <Icon size={13} style={{ color }} className="mx-auto mb-1" />
+              <p className="font-pixel text-[7px] text-zinc-500 mb-1">{label}</p>
               <p className="font-pixel text-xl text-zinc-100">{stats[key]}</p>
             </div>
           ))}
         </motion.div>
 
-        {/* Class Bonus */}
-        <div className="bg-[#18181B] border-2 border-[#FF4500]/25 p-3">
-          <p className="font-plex text-xs text-zinc-400">
-            <span className="text-[#FF4500] font-semibold">Class Bonus: </span>
-            {classBonus}
-          </p>
-        </div>
-
-        {/* Stiffness banner */}
-        {isStiff && (
-          <motion.div
-            initial={{ opacity: 0, y: -8 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="bg-red-950/50 border-2 border-red-500/60 p-3 flex items-center gap-3"
+        {/* ─── Quick actions strip ─── */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.18 }}
+          className="flex gap-2"
+        >
+          <div
+            className="flex-1 flex items-center gap-2 px-3 py-2 border"
+            style={{ background: '#0d0d12', borderColor: '#1a1a22' }}
           >
-            <AlertTriangle size={18} className="text-red-400 flex-shrink-0" />
-            <div className="flex-1">
-              <p data-testid="camp-rusted-banner" className="font-pixel text-[9px] text-red-300 mb-0.5">RUSTED</p>
-              <p className="font-plex text-[11px] text-red-200/80 leading-snug">
-                Inactive 48h+. Your blade dulls — train to forge yourself back.
-              </p>
+            <Swords size={12} style={{ color: classColor }} />
+            <span className="font-pixel text-[7px] text-zinc-400">{classBonus}</span>
+          </div>
+          {sp > 0 && (
+            <div
+              className="flex items-center gap-1.5 px-3 py-2 border"
+              style={{ background: 'rgba(255,69,0,0.08)', borderColor: 'rgba(255,69,0,0.3)' }}
+            >
+              <span className="font-pixel text-[7px]" style={{ color: '#FF4500' }}>
+                {sp} SP → HERO
+              </span>
             </div>
-          </motion.div>
-        )}
+          )}
+        </motion.div>
 
-        {/* Weekly Challenge */}
+        {/* ─── Weekly Challenge ─── */}
         {weeklyInfo && (
-          <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
+          <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.22 }}>
             <WeeklyChallenge info={weeklyInfo} onClaim={onClaimWeeklyTier} />
           </motion.div>
         )}
 
-        {/* Workout History */}
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.25 }}>
-          <WorkoutHistory history={gameData.workoutHistory || []} />
+        {/* ─── Workout History (collapsible) ─── */}
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.28 }}>
+          <button
+            onClick={() => setHistoryOpen(v => !v)}
+            className="w-full flex items-center justify-between px-3 py-2 border"
+            style={{ background: '#0d0d12', borderColor: '#1a1a22', color: '#52525B' }}
+          >
+            <span className="font-pixel text-[8px] text-zinc-500">RECENT TRAINING</span>
+            {historyOpen ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+          </button>
+          <AnimatePresence>
+            {historyOpen && (
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: 'auto', opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                transition={{ duration: 0.22 }}
+                className="overflow-hidden"
+              >
+                <WorkoutHistory history={gameData.workoutHistory || []} />
+              </motion.div>
+            )}
+          </AnimatePresence>
         </motion.div>
-      </div>
 
-      {/* Log Workout Button */}
-      <div className="p-4">
-        <motion.button
-          data-testid="log-workout-btn"
-          onClick={onLogWorkout}
-          whileTap={{ scale: 0.97 }}
-          className="w-full bg-[#FF4500] hover:bg-[#DC2626] text-white font-pixel text-sm py-5 border-2 border-[#FF8C00] hover:border-[#FF4500] shadow-[inset_-2px_-2px_0px_rgba(0,0,0,0.4),_4px_4px_0px_rgba(0,0,0,1)] active:translate-y-[2px] active:translate-x-[2px] active:shadow-[inset_-1px_-1px_0px_rgba(0,0,0,0.4),_1px_1px_0px_rgba(0,0,0,1)] transition-colors uppercase"
-        >
-          Log Workout
-        </motion.button>
       </div>
     </div>
   );
